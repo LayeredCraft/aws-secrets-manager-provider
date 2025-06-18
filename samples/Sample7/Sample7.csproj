@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.6" />
         <ProjectReference Include="..\..\src\AWSSecretsManager.Provider\AWSSecretsManager.Provider.csproj" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.5" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.6" />
     </ItemGroup>
 
     <PropertyGroup>
