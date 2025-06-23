@@ -11,7 +11,7 @@ on:
 permissions: write-all
 jobs:
   build:
-    uses: LayeredCraft/devops-templates/.github/workflows/package-build.yaml@v3.2
+    uses: LayeredCraft/devops-templates/.github/workflows/package-build.yaml@v5.0
     with:
       dotnet-version: |
         8.0.x
