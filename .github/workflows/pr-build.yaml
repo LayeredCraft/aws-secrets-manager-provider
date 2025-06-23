@@ -7,7 +7,7 @@ on:
 permissions: write-all
 jobs:
   build:
-    uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@coverage
+    uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@v5.0
     with:
       solution: AWSSecretsManager.sln
       hasTests: true
@@ -15,5 +15,4 @@ jobs:
         8.0.x
         9.0.x
       runCdk: false
-      coverageThreshold: 80
     secrets: inherit
