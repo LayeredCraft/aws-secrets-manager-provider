@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -10,13 +9,23 @@ using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using LayeredCraft.StructuredLogging;
 
 namespace AWSSecretsManager.Provider.Internal;
 
+/// <summary>
+/// Configuration provider that loads secrets from AWS Secrets Manager.
+/// </summary>
 public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDisposable
 {
+    /// <summary>
+    /// Gets the configuration options for the secrets manager provider.
+    /// </summary>
     public SecretsManagerConfigurationProviderOptions Options { get; }
 
+    /// <summary>
+    /// Gets the AWS Secrets Manager client used to retrieve secrets.
+    /// </summary>
     public IAmazonSecretsManager Client { get; }
 
     private readonly ILogger? _logger;
@@ -24,6 +33,13 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     private Task? _pollingTask;
     private CancellationTokenSource? _cancellationToken;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SecretsManagerConfigurationProvider"/> class.
+    /// </summary>
+    /// <param name="client">The AWS Secrets Manager client.</param>
+    /// <param name="options">The configuration options.</param>
+    /// <param name="logger">The logger instance for diagnostic information.</param>
+    /// <exception cref="ArgumentNullException">Thrown when client or options are null.</exception>
     public SecretsManagerConfigurationProvider(IAmazonSecretsManager client, SecretsManagerConfigurationProviderOptions options, ILogger? logger = null)
     {
         Options = options ?? throw new ArgumentNullException(nameof(options));
@@ -31,28 +47,33 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         _logger = logger;
     }
 
+    /// <summary>
+    /// Loads the configuration data from AWS Secrets Manager.
+    /// </summary>
     public override void Load()
     {
         // Note: Using GetAwaiter().GetResult() is required here because the ConfigurationProvider.Load()
         // method must be synchronous, but AWS SDK operations are async-only. This follows the same
         // pattern used by other configuration providers that integrate with async-only services.
         // The ConfigureAwait(false) helps prevent deadlocks in synchronization contexts.
-        _logger?.LogInformation("Loading secrets from AWS Secrets Manager");
-        var stopwatch = Stopwatch.StartNew();
-        
-        try
+        if (_logger != null)
+        {
+            _logger.Time("Loading secrets from AWS Secrets Manager", () =>
+            {
+                LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            });
+        }
+        else
         {
             LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-            _logger?.LogInformation("Successfully loaded {SecretCount} configuration keys in {ElapsedMs}ms", 
-                Data.Count, stopwatch.ElapsedMilliseconds);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to load secrets from AWS Secrets Manager");
-            throw;
         }
     }
 
+    /// <summary>
+    /// Forces a reload of the configuration data from AWS Secrets Manager.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous reload operation.</returns>
     public Task ForceReloadAsync(CancellationToken cancellationToken)
     {
         return ReloadAsync(cancellationToken);
@@ -78,14 +99,14 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
 
     private async Task PollForChangesAsync(TimeSpan interval, CancellationToken cancellationToken)
     {
-        _logger?.LogInformation("Starting secret polling with interval {PollingInterval}", interval);
+        _logger?.Information("Starting secret polling with interval {PollingInterval}", interval);
         
         while (!cancellationToken.IsCancellationRequested)
         {
             await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
             try
             {
-                _logger?.LogTrace("Polling for secret changes");
+                _logger?.Debug("Polling for secret changes");
                 await ReloadAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -95,37 +116,58 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Error during secret polling, will retry in {PollingInterval}", interval);
+                _logger?.Warning(ex, "Error during secret polling, will retry in {PollingInterval}", interval);
             }
         }
         
-        _logger?.LogInformation("Secret polling stopped");
+        _logger?.Information("Secret polling stopped");
     }
 
     private async Task ReloadAsync(CancellationToken cancellationToken)
     {
-        var stopwatch = Stopwatch.StartNew();
-        var oldValues = _loadedValues;
-
-        var newValues = Options.UseBatchFetch switch
+        if (_logger != null)
         {
-            true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
-            _ => await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false)
-        };
+            await _logger.TimeAsync("Reloading secrets from AWS Secrets Manager", async () =>
+            {
+                var oldValues = _loadedValues;
 
-        if (!oldValues.SetEquals(newValues))
-        {
-            _loadedValues = newValues;
-            SetData(_loadedValues, triggerReload: true);
-            
-            var addedCount = newValues.Except(oldValues).Count();
-            var removedCount = oldValues.Except(newValues).Count();
-            _logger?.LogInformation("Secret changes detected and reloaded. {AddedCount} added, {RemovedCount} removed, reload took {ElapsedMs}ms",
-                addedCount, removedCount, stopwatch.ElapsedMilliseconds);
+                var newValues = Options.UseBatchFetch switch
+                {
+                    true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
+                    _ => await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false)
+                };
+
+                if (!oldValues.SetEquals(newValues))
+                {
+                    _loadedValues = newValues;
+                    SetData(_loadedValues, triggerReload: true);
+                    
+                    var addedCount = newValues.Except(oldValues).Count();
+                    var removedCount = oldValues.Except(newValues).Count();
+                    _logger.Information("Secret changes detected and reloaded. {AddedCount} added, {RemovedCount} removed",
+                        addedCount, removedCount);
+                }
+                else
+                {
+                    _logger.Debug("No secret changes detected");
+                }
+            });
         }
         else
         {
-            _logger?.LogTrace("No secret changes detected, reload took {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
+            var oldValues = _loadedValues;
+
+            var newValues = Options.UseBatchFetch switch
+            {
+                true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
+                _ => await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false)
+            };
+
+            if (!oldValues.SetEquals(newValues))
+            {
+                _loadedValues = newValues;
+                SetData(_loadedValues, triggerReload: true);
+            }
         }
     }
 
@@ -447,6 +489,9 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         return set;
     }
 
+    /// <summary>
+    /// Releases all resources used by the <see cref="SecretsManagerConfigurationProvider"/>.
+    /// </summary>
     public void Dispose()
     {
         _cancellationToken?.Cancel();
