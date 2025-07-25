@@ -160,7 +160,7 @@ public class SecretsManagerConfigurationProviderTests
         const string secretKey = "KEY";
         var firstSecretArn = listSecretsResponse.SecretList.Select(x => x.ARN).First();
         secretsManager.GetSecretValueAsync(Arg.Is<GetSecretValueRequest>(x => x.SecretId.Equals(firstSecretArn)),
-                Arg.Any<CancellationToken>()).Returns(Task.FromResult(getSecretValueResponse));
+            Arg.Any<CancellationToken>()).Returns(Task.FromResult(getSecretValueResponse));
 
         options.SecretFilter = _ => true;
         options.AcceptedSecretArns = new List<string> { firstSecretArn };
@@ -170,7 +170,7 @@ public class SecretsManagerConfigurationProviderTests
 
         secretsManager.DidNotReceive()
             .GetSecretValueAsync(Arg.Is<GetSecretValueRequest>(x => !x.SecretId.Equals(firstSecretArn)),
-                    Arg.Any<CancellationToken>());
+                Arg.Any<CancellationToken>());
         secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
 
         sut.Get(testEntry.Name).Should().BeNull();
@@ -183,8 +183,8 @@ public class SecretsManagerConfigurationProviderTests
         [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
         secretsManager.GetSecretValueAsync(
-                Arg.Is<GetSecretValueRequest>(x => x.SecretId.Equals(getSecretValueResponse.ARN)),
-                Arg.Any<CancellationToken>()).Returns(Task.FromResult(getSecretValueResponse));
+            Arg.Is<GetSecretValueRequest>(x => x.SecretId.Equals(getSecretValueResponse.ARN)),
+            Arg.Any<CancellationToken>()).Returns(Task.FromResult(getSecretValueResponse));
 
         options.AcceptedSecretArns = new List<string> { getSecretValueResponse.ARN };
 
@@ -193,8 +193,8 @@ public class SecretsManagerConfigurationProviderTests
 
         secretsManager.DidNotReceive()
             .GetSecretValueAsync(
-                    Arg.Is<GetSecretValueRequest>(x => !x.SecretId.Equals(getSecretValueResponse.ARN)),
-                    Arg.Any<CancellationToken>());
+                Arg.Is<GetSecretValueRequest>(x => !x.SecretId.Equals(getSecretValueResponse.ARN)),
+                Arg.Any<CancellationToken>());
 
         sut.Get(getSecretValueResponse.Name).Should().Be(getSecretValueResponse.SecretString);
     }
@@ -214,8 +214,8 @@ public class SecretsManagerConfigurationProviderTests
         };
 
         secretsManager.ListSecretsAsync(
-                Arg.Is<ListSecretsRequest>(request => request.Filters == options.ListSecretsFilters),
-                Arg.Any<CancellationToken>()).Returns(Task.FromResult(listSecretsResponse));
+            Arg.Is<ListSecretsRequest>(request => request.Filters == options.ListSecretsFilters),
+            Arg.Any<CancellationToken>()).Returns(Task.FromResult(listSecretsResponse));
 
         secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(getSecretValueResponse));
@@ -267,8 +267,8 @@ public class SecretsManagerConfigurationProviderTests
     }
 
     [Theory, CustomAutoData]
-    public void Get_secret_value_request_can_be_customized_via_options([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueResponse,
+    public void Get_secret_value_request_can_be_customized_via_options(ListSecretsResponse listSecretsResponse,
+        GetSecretValueResponse getSecretValueResponse,
         string secretVersionStage, [Frozen] IAmazonSecretsManager secretsManager,
         [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
@@ -284,12 +284,12 @@ public class SecretsManagerConfigurationProviderTests
 
         secretsManager.Received(1)
             .GetSecretValueAsync(Arg.Is<GetSecretValueRequest>(x => x.VersionStage == secretVersionStage),
-                    Arg.Any<CancellationToken>());
+                Arg.Any<CancellationToken>());
     }
 
     [Theory, CustomAutoData]
-    public void Should_throw_on_missing_secret_value([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
+    public void Should_throw_on_missing_secret_value(ListSecretsResponse listSecretsResponse,
+        [Frozen] IAmazonSecretsManager secretsManager,
         SecretsManagerConfigurationProvider sut)
     {
         secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
@@ -303,8 +303,8 @@ public class SecretsManagerConfigurationProviderTests
     }
 
     [Theory, CustomAutoData]
-    public void Should_skip_on_missing_secret_value_if_configured([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
+    public void Should_skip_on_missing_secret_value_if_configured(ListSecretsResponse listSecretsResponse,
+        [Frozen] IAmazonSecretsManager secretsManager,
         [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
         secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
@@ -320,8 +320,8 @@ public class SecretsManagerConfigurationProviderTests
     }
 
     [Theory, CustomAutoData]
-    public void Should_throw_on_batch_missing_secret_values([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
+    public void Should_throw_on_batch_missing_secret_values(ListSecretsResponse listSecretsResponse,
+        [Frozen] IAmazonSecretsManager secretsManager,
         [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut,
         IFixture fixture)
     {
@@ -336,7 +336,7 @@ public class SecretsManagerConfigurationProviderTests
             .Create();
 
         secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(),
-                Arg.Any<CancellationToken>()).Returns(Task.FromResult(batchGetSecretValueResponse));
+            Arg.Any<CancellationToken>()).Returns(Task.FromResult(batchGetSecretValueResponse));
 
         options.UseBatchFetch = true;
 
@@ -345,8 +345,8 @@ public class SecretsManagerConfigurationProviderTests
     }
 
     [Theory, CustomAutoData]
-    public void Should_skip_on_missing_batch_secret_values_if_configured([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
+    public void Should_skip_on_missing_batch_secret_values_if_configured(ListSecretsResponse listSecretsResponse,
+        [Frozen] IAmazonSecretsManager secretsManager,
         [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut,
         IFixture fixture)
     {
@@ -361,7 +361,7 @@ public class SecretsManagerConfigurationProviderTests
             .Create();
 
         secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(),
-                Arg.Any<CancellationToken>()).Returns(Task.FromResult(batchGetSecretValueResponse));
+            Arg.Any<CancellationToken>()).Returns(Task.FromResult(batchGetSecretValueResponse));
 
         options.UseBatchFetch = true;
         options.IgnoreMissingValues = true;
@@ -400,7 +400,7 @@ public class SecretsManagerConfigurationProviderTests
     public async Task Should_reload_when_forceReload_called([Frozen] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueInitialResponse,
         GetSecretValueResponse getSecretValueUpdatedResponse, [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut,
+        SecretsManagerConfigurationProvider sut,
         Action<object> changeCallback, object changeCallbackState)
     {
         secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
