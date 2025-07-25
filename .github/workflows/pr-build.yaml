@@ -7,7 +7,7 @@ on:
 permissions: write-all
 jobs:
   build:
-    uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@feature/multi-framework-mtp-support
+    uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@v6.1
     with:
       solution: AWSSecretsManager.sln
       hasTests: true
