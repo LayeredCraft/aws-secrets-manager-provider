@@ -108,7 +108,7 @@ builder.Services.AddOpenTelemetry()
         .AddAWSSecretsManager()  // 👈 AWS Secrets Manager tracing
         .AddConsoleExporter())
     .WithMetrics(metrics => metrics
-        .AddMeter(AWSSecretsManagerTelemetry.MeterName)  // 👈 AWS Secrets Manager metrics
+        .AddAWSSecretsManager()  // 👈 AWS Secrets Manager metrics
         .AddConsoleExporter());
 
 // Configure AWS Secrets Manager with logging
@@ -136,10 +136,21 @@ builder.Configuration.AddSecretsManager(loggerFactory);
 **🏷️ Key Attributes:**
 - `aws.region` - AWS region information
 - `aws_secrets.operation.type` - Type of operation (load, reload, fetch, etc.)
-- `aws_secrets.api_call.operation` - AWS API operation (ListSecrets, GetSecretValue, etc.)
 - `aws_secrets.use_batch_fetch` - Whether batch fetching is enabled
-- `aws_secrets.json_parse.success` - JSON parsing success status
+- `aws_secrets.ignore_missing_values` - Whether missing secrets are ignored
+- `aws_secrets.polling.interval` - Polling interval in milliseconds
+- `aws_secrets.batch.size` - Size of batch operations
+- `aws_secrets.error.type` - Type of error encountered
 - `aws_secrets.secret.count` - Number of secrets processed
+- `aws_secrets.api_call.operation` - AWS API operation (ListSecrets, GetSecretValue, etc.)
+- `aws_secrets.api_call.result` - Result of API call (success, error)
+- `aws_secrets.api_calls.count` - Number of API calls made
+- `aws_secrets.json_parse.success` - Whether JSON parsing succeeded
+- `aws_secrets.json_parses.count` - Number of JSON parse attempts
+- `aws_secrets.json_parses.success_count` - Number of successful JSON parses
+- `aws_secrets.secrets.changed` - Whether secrets changed during reload
+- `aws_secrets.secrets.added` - Number of secrets added during reload
+- `aws_secrets.secrets.removed` - Number of secrets removed during reload
 
 **📋 Complete Example:**
 
