@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using AWSSecretsManager.Provider;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
