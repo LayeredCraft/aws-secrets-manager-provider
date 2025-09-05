@@ -18,7 +18,8 @@ It provides a configuration provider for [Microsoft.Extensions.Configuration](ht
 - ✅ Converted to use `System.Text.Json` only
 - ✅ Refactored structure for better modern SDK usage
 - ✅ **NEW**: Comprehensive logging support with `ILogger` integration
-- ✅ Published as a new NuGet package: [`AWSSecretsManager.Provider`](https://www.nuget.org/packages/AWSSecretsManager.Provider)
+- ✅ **NEW**: OpenTelemetry observability with metrics, traces, and AWS region tracking
+- ✅ Published as new NuGet packages: [`AWSSecretsManager.Provider`](https://www.nuget.org/packages/AWSSecretsManager.Provider) + [`AWSSecretsManager.Provider.Observability`](https://www.nuget.org/packages/AWSSecretsManager.Provider.Observability)
 
 ---
 
@@ -96,6 +97,65 @@ builder.Configuration.AddSecretsManager(
 [Information] Starting secret polling with interval 00:05:00
 ```
 
+### 📊 OpenTelemetry Observability 
+
+The provider includes comprehensive OpenTelemetry support for monitoring secret loading performance, AWS API interactions, and operational metrics:
+
+```csharp
+// Add OpenTelemetry observability
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddAWSSecretsManager()  // 👈 AWS Secrets Manager tracing
+        .AddConsoleExporter())
+    .WithMetrics(metrics => metrics
+        .AddAWSSecretsManager()  // 👈 AWS Secrets Manager metrics
+        .AddConsoleExporter());
+
+// Configure AWS Secrets Manager with logging
+builder.Configuration.AddSecretsManager(loggerFactory);
+```
+
+**📈 Available Metrics:**
+- `aws_secrets.loaded` - Number of secrets loaded
+- `aws_secrets.load.duration` - Time to load secrets (histogram)
+- `aws_secrets.reload.duration` - Time to reload secrets (histogram)
+- `aws_secrets.api_calls` - AWS API call counts by operation
+- `aws_secrets.polling_cycles` - Background polling success counts
+- `aws_secrets.configuration_errors` - Configuration error counts by type
+- `aws_secrets.batch_size` - Batch operation sizes (histogram)
+- `aws_secrets.json_parse.duration` - JSON parsing times (histogram)
+
+**🔍 Available Traces:**
+- `aws_secrets.load` - Main secret loading operation
+- `aws_secrets.reload` - Secret reload operation
+- `aws_secrets.fetch_configuration` - Individual secret fetching
+- `aws_secrets.fetch_configuration_batch` - Batch secret fetching
+- `aws_secrets.aws_api_call` - Individual AWS API calls
+- `aws_secrets.json_parse` - JSON parsing operations
+
+**🏷️ Key Attributes:**
+- `aws.region` - AWS region information
+- `aws_secrets.operation.type` - Type of operation (load, reload, fetch, etc.)
+- `aws_secrets.use_batch_fetch` - Whether batch fetching is enabled
+- `aws_secrets.ignore_missing_values` - Whether missing secrets are ignored
+- `aws_secrets.polling.interval` - Polling interval in milliseconds
+- `aws_secrets.batch.size` - Size of batch operations
+- `aws_secrets.error.type` - Type of error encountered
+- `aws_secrets.secret.count` - Number of secrets processed
+- `aws_secrets.api_call.operation` - AWS API operation (ListSecrets, GetSecretValue, etc.)
+- `aws_secrets.api_call.result` - Result of API call (success, error)
+- `aws_secrets.api_calls.count` - Number of API calls made
+- `aws_secrets.json_parse.success` - Whether JSON parsing succeeded
+- `aws_secrets.json_parses.count` - Number of JSON parse attempts
+- `aws_secrets.json_parses.success_count` - Number of successful JSON parses
+- `aws_secrets.secrets.changed` - Whether secrets changed during reload
+- `aws_secrets.secrets.added` - Number of secrets added during reload
+- `aws_secrets.secrets.removed` - Number of secrets removed during reload
+
+**📋 Complete Example:**
+
+See the [SampleWebOtel](/samples/SampleWebOtel/) sample for a complete ASP.NET Core application with OpenTelemetry integration.
+
 ---
 
 ## 🔒 Configuration Options
@@ -110,14 +170,39 @@ This provider supports several customization options, including:
 - **Logging**: Full logging support with `ILogger` integration for observability.
 - **LocalStack support**: Override `ServiceUrl` for local testing.
 
-Refer to [samples](/samples/) for examples of each option.
+## 📚 Samples
+
+| Sample | Description | Key Features | When to Use |
+|--------|-------------|--------------|-------------|
+| [Sample1](/samples/Sample1/) | Basic usage with default settings | Default credentials, region, and options | Starting point for simple scenarios |
+| [Sample2](/samples/Sample2/) | Custom AWS region configuration | Explicit region (EU-West-1) | Multi-region deployments |
+| [Sample3](/samples/Sample3/) | Named AWS profile credentials | Credential profile store, custom profile | Using named AWS profiles |
+| [Sample4](/samples/Sample4/) | Secret filtering by ARN | Explicit allow list of secret ARNs | Restricting to specific secrets |
+| [Sample5](/samples/Sample5/) | Custom key generation | Uppercase key transformation | Custom configuration key naming |
+| [Sample6](/samples/Sample6/) | Custom client factory | Client creation with custom configuration | Advanced AWS client customization |
+| [Sample7](/samples/Sample7/) | Comprehensive logging | Full logging integration, manual reload | Debugging and operational visibility |
+| [SampleWeb](/samples/SampleWeb/) | ASP.NET Core integration | Web application, logger factory, polling | Modern web applications |
+| [SampleWebOtel](/samples/SampleWebOtel/) | **NEW**: OpenTelemetry integration | Traces, metrics, console exporters | Production monitoring and observability |
+
+Each sample includes a detailed `Program.cs` with comments explaining the configuration options and use cases.
 
 ---
 
-## 📦 Installation
+## 📦 Packages
+
+| Package | Description | Version |
+|---------|-------------|---------|
+| [AWSSecretsManager.Provider](https://www.nuget.org/packages/AWSSecretsManager.Provider) | Core AWS Secrets Manager configuration provider | [![NuGet](https://img.shields.io/nuget/vpre/AWSSecretsManager.Provider.svg)](https://www.nuget.org/packages/AWSSecretsManager.Provider) |
+| [AWSSecretsManager.Provider.Observability](https://www.nuget.org/packages/AWSSecretsManager.Provider.Observability) | OpenTelemetry observability extensions | [![NuGet](https://img.shields.io/nuget/vpre/AWSSecretsManager.Provider.Observability.svg)](https://www.nuget.org/packages/AWSSecretsManager.Provider.Observability) |
+
+### Installation
 
 ```bash
+# Core provider
 dotnet add package AWSSecretsManager.Provider
+
+# Optional: OpenTelemetry observability  
+dotnet add package AWSSecretsManager.Provider.Observability
 ```
 
 ---
