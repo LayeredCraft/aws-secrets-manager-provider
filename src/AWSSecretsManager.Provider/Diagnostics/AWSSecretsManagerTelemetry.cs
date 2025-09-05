@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Text.Json;
+using Amazon.SecretsManager.Model;
 
 namespace AWSSecretsManager.Provider.Diagnostics;
 
@@ -27,15 +29,53 @@ public static class AWSSecretsManagerTelemetry
     public static readonly Histogram<double> LoadDuration = 
         Meter.CreateHistogram<double>(AWSSecretsManagerMetricNames.LoadDuration, unit: "ms");
     public static readonly Histogram<double> ReloadDuration = 
-        Meter.CreateHistogram<double>(AWSSecretsManagerMetricNames.ReloadDuration, "ms");
+        Meter.CreateHistogram<double>(AWSSecretsManagerMetricNames.ReloadDuration, unit: "ms");
     public static readonly Histogram<long> BatchSize = 
         Meter.CreateHistogram<long>(AWSSecretsManagerMetricNames.BatchSize, unit: "{secret}");
     public static readonly Histogram<double> JsonParseDuration = 
-        Meter.CreateHistogram<double>(AWSSecretsManagerMetricNames.JsonParseDuration, "ms");
+        Meter.CreateHistogram<double>(AWSSecretsManagerMetricNames.JsonParseDuration, unit: "ms");
 
     public static TimerScope TimeLoad() => new(LoadDuration);
     public static TimerScope TimeReload() => new(ReloadDuration);
     public static TimerScope TimeJsonParse() => new(JsonParseDuration);
+    
+    public static void RecordError(Activity? span, Exception ex, string operationType)
+    {
+        span?.AddException(ex);
+        span?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        ConfigurationErrors.Add(1,
+            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ErrorType, GetErrorType(ex)),
+            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.OperationType, operationType));
+    }
+    
+    public static void RecordApiCall(Activity? span, string operation, string result, Exception? exception = null)
+    {
+        span?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallResult, result);
+        
+        if (exception != null)
+        {
+            span?.AddException(exception);
+            span?.SetStatus(ActivityStatusCode.Error, exception.Message);
+        }
+        
+        ApiCalls.Add(1,
+            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallOperation, operation),
+            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallResult, result));
+    }
+    
+    private static string GetErrorType(Exception ex)
+    {
+        return ex switch
+        {
+            ResourceNotFoundException => AWSSecretsManagerSemanticValues.ErrorTypeResourceNotFound,
+            DecryptionFailureException => AWSSecretsManagerSemanticValues.ErrorTypeDecryptionFailure,
+            InternalServiceErrorException => AWSSecretsManagerSemanticValues.ErrorTypeInternalService,
+            InvalidParameterException => AWSSecretsManagerSemanticValues.ErrorTypeInvalidParameter,
+            InvalidRequestException => AWSSecretsManagerSemanticValues.ErrorTypeInvalidRequest,
+            JsonException => AWSSecretsManagerSemanticValues.ErrorTypeJsonParse,
+            _ => ex.GetType().Name
+        };
+    }
 
     public readonly struct TimerScope : IDisposable
     {

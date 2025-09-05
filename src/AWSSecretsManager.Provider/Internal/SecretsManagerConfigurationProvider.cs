@@ -89,11 +89,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         }
         catch (Exception ex)
         {
-            span?.AddException(ex);
-            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            AWSSecretsManagerTelemetry.ConfigurationErrors.Add(1,
-                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ErrorType, GetErrorType(ex)),
-                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeLoad));
+            AWSSecretsManagerTelemetry.RecordError(span, ex, AWSSecretsManagerSemanticValues.OperationTypeLoad);
             throw;
         }
     }
@@ -189,11 +185,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         }
         catch (Exception ex)
         {
-            span?.AddException(ex);
-            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            AWSSecretsManagerTelemetry.ConfigurationErrors.Add(1,
-                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ErrorType, GetErrorType(ex)),
-                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeReload));
+            AWSSecretsManagerTelemetry.RecordError(span, ex, AWSSecretsManagerSemanticValues.OperationTypeReload);
             throw;
         }
     }
@@ -372,20 +364,11 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
             {
                 response = await Client.ListSecretsAsync(request, cancellationToken).ConfigureAwait(false);
                 apiCallCount++;
-                apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
-                
-                AWSSecretsManagerTelemetry.ApiCalls.Add(1,
-                    new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationListSecrets),
-                    new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultSuccess));
+                AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationListSecrets, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
             }
             catch (Exception ex)
             {
-                apiCallSpan?.AddException(ex);
-                apiCallSpan?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultError);
-                AWSSecretsManagerTelemetry.ApiCalls.Add(1,
-                    new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationListSecrets),
-                    new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultError));
+                AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationListSecrets, AWSSecretsManagerSemanticValues.ApiCallResultError, ex);
                 throw;
             }
 
@@ -433,30 +416,16 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                     {
                         secretValue = await Client.GetSecretValueAsync(request, cancellationToken).ConfigureAwait(false);
                         apiCallCount++;
-                        apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
-                        
-                        AWSSecretsManagerTelemetry.ApiCalls.Add(1,
-                            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue),
-                            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultSuccess));
+                        AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
                     }
                     catch (ResourceNotFoundException ex) when (Options.IgnoreMissingValues)
                     {
-                        apiCallSpan?.AddException(ex);
-                        apiCallSpan?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                        apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultError);
-                        AWSSecretsManagerTelemetry.ApiCalls.Add(1,
-                            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue),
-                            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultError));
+                        AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultError, ex);
                         continue;
                     }
                     catch (Exception ex)
                     {
-                        apiCallSpan?.AddException(ex);
-                        apiCallSpan?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                        apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultError);
-                        AWSSecretsManagerTelemetry.ApiCalls.Add(1,
-                            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue),
-                            new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultError));
+                        AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultError, ex);
                         throw;
                     }
 
@@ -588,20 +557,11 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                             secretValueSet = await Client.BatchGetSecretValueAsync(request, cancellationToken)
                                 .ConfigureAwait(false);
                             apiCallCount++;
-                            apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
-                            
-                            AWSSecretsManagerTelemetry.ApiCalls.Add(1,
-                                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationBatchGetSecretValue),
-                                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultSuccess));
+                            AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationBatchGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
                         }
                         catch (Exception ex)
                         {
-                            apiCallSpan?.AddException(ex);
-                            apiCallSpan?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                            apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultError);
-                            AWSSecretsManagerTelemetry.ApiCalls.Add(1,
-                                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationBatchGetSecretValue),
-                                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ApiCallResult, AWSSecretsManagerSemanticValues.ApiCallResultError));
+                            AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationBatchGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultError, ex);
                             throw;
                         }
                         
@@ -734,19 +694,6 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         return set;
     }
 
-    private static string GetErrorType(Exception ex)
-    {
-        return ex switch
-        {
-            ResourceNotFoundException => AWSSecretsManagerSemanticValues.ErrorTypeResourceNotFound,
-            DecryptionFailureException => AWSSecretsManagerSemanticValues.ErrorTypeDecryptionFailure,
-            InternalServiceErrorException => AWSSecretsManagerSemanticValues.ErrorTypeInternalService,
-            InvalidParameterException => AWSSecretsManagerSemanticValues.ErrorTypeInvalidParameter,
-            InvalidRequestException => AWSSecretsManagerSemanticValues.ErrorTypeInvalidRequest,
-            JsonException => AWSSecretsManagerSemanticValues.ErrorTypeJsonParse,
-            _ => ex.GetType().Name
-        };
-    }
 
     /// <summary>
     /// Releases all resources used by the <see cref="SecretsManagerConfigurationProvider"/>.
