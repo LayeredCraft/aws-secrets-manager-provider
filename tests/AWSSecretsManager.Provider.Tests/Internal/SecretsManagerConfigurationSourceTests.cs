@@ -1,3 +1,4 @@
+using System;
 using Amazon.Runtime;
 using Amazon.SecretsManager;
 using AWSSecretsManager.Provider.Internal;

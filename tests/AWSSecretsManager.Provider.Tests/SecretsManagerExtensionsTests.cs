@@ -1,3 +1,4 @@
+using System;
 using Amazon;
 using Amazon.Runtime;
 using AWSSecretsManager.Provider.Internal;
@@ -5,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
+using AwesomeAssertions;
 
 namespace AWSSecretsManager.Provider.Tests;
 
