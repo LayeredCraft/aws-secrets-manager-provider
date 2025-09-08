@@ -110,7 +110,22 @@ This provider supports several customization options, including:
 - **Logging**: Full logging support with `ILogger` integration for observability.
 - **LocalStack support**: Override `ServiceUrl` for local testing.
 
-Refer to [samples](/samples/) for examples of each option.
+## 📚 Samples
+
+The repository includes comprehensive samples demonstrating different usage patterns:
+
+| Sample | Description | Key Features |
+|--------|-------------|--------------|
+| **[Sample1](./samples/Sample1/)** | Basic Usage | Default credentials, default region, all secrets |
+| **[Sample2](./samples/Sample2/)** | Region Configuration | Custom AWS region specification |
+| **[Sample3](./samples/Sample3/)** | Credential Profiles | Using named AWS credential profiles |
+| **[Sample4](./samples/Sample4/)** | Secret Filtering | Loading specific secrets by ARN allowlist |
+| **[Sample5](./samples/Sample5/)** | Custom Key Generation | Transforming configuration key names (e.g., uppercase) |
+| **[Sample6](./samples/Sample6/)** | Custom Client Factory | Advanced AWS client configuration |
+| **[Sample7](./samples/Sample7/)** | Advanced Logging | Comprehensive logging, polling, and monitoring |
+| **[SampleWeb](./samples/SampleWeb/)** | ASP.NET Core | Web application integration with endpoints |
+
+Each sample includes a detailed README with usage examples, prerequisites, and explanations. See the complete [samples overview](./samples/) for setup instructions and learning progression.
 
 ---
 
