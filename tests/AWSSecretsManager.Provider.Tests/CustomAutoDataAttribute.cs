@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using Amazon.SecretsManager.Model;
 using AutoFixture;
 using AutoFixture.AutoNSubstitute;
@@ -6,6 +9,7 @@ using AutoFixture.Kernel;
 using AutoFixture.Xunit3;
 using AWSSecretsManager.Provider.Internal;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace AWSSecretsManager.Provider.Tests;
 

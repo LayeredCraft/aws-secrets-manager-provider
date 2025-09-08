@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -8,7 +7,6 @@ using System.Threading.Tasks;
 using Amazon.Runtime;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
-using AWSSecretsManager.Provider.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using LayeredCraft.StructuredLogging;
@@ -54,43 +52,20 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     /// </summary>
     public override void Load()
     {
-        using var span = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.Load);
-        using var timer = AWSSecretsManagerTelemetry.TimeLoad();
-        
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeLoad);
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.UseBatchFetch, Options.UseBatchFetch ? AWSSecretsManagerSemanticValues.True : AWSSecretsManagerSemanticValues.False);
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.IgnoreMissingValues, Options.IgnoreMissingValues ? AWSSecretsManagerSemanticValues.True : AWSSecretsManagerSemanticValues.False);
-        if (Options.PollingInterval.HasValue)
-        {
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.PollingInterval, Options.PollingInterval.Value.TotalMilliseconds);
-        }
-        
         // Note: Using GetAwaiter().GetResult() is required here because the ConfigurationProvider.Load()
         // method must be synchronous, but AWS SDK operations are async-only. This follows the same
         // pattern used by other configuration providers that integrate with async-only services.
         // The ConfigureAwait(false) helps prevent deadlocks in synchronization contexts.
-        try
+        if (_logger != null)
         {
-            if (_logger != null)
-            {
-                _logger.Time("Loading secrets from AWS Secrets Manager", () =>
-                {
-                    LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-                });
-            }
-            else
+            _logger.Time("Loading secrets from AWS Secrets Manager", () =>
             {
                 LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-            }
-            
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretCount, _loadedValues.Count);
-            AWSSecretsManagerTelemetry.SecretsLoaded.Add(_loadedValues.Count, 
-                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeLoad));
+            });
         }
-        catch (Exception ex)
+        else
         {
-            AWSSecretsManagerTelemetry.RecordError(span, ex, AWSSecretsManagerSemanticValues.OperationTypeLoad);
-            throw;
+            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
         }
     }
 
@@ -126,21 +101,13 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     {
         _logger?.Information("Starting secret polling with interval {PollingInterval}", interval);
         
-        var pollingCycleCount = 0;
-        
         while (!cancellationToken.IsCancellationRequested)
         {
             await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
-            
-            pollingCycleCount++;
             try
             {
                 _logger?.Debug("Polling for secret changes");
                 await ReloadAsync(cancellationToken).ConfigureAwait(false);
-                
-                // Record successful polling cycle
-                AWSSecretsManagerTelemetry.PollingCycles.Add(1,
-                    new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.PollingInterval, interval.TotalMilliseconds));
             }
             catch (OperationCanceledException)
             {
@@ -150,82 +117,57 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
             catch (Exception ex)
             {
                 _logger?.Warning(ex, "Error during secret polling, will retry in {PollingInterval}", interval);
-                
-                // Record polling error
-                AWSSecretsManagerTelemetry.ConfigurationErrors.Add(1,
-                    new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.ErrorType, AWSSecretsManagerSemanticValues.ErrorTypePolling),
-                    new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeReload));
             }
         }
         
-        _logger?.Information("Secret polling stopped after {PollingCycles} cycles", pollingCycleCount);
+        _logger?.Information("Secret polling stopped");
     }
 
     private async Task ReloadAsync(CancellationToken cancellationToken)
     {
-        using var span = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.Reload);
-        using var timer = AWSSecretsManagerTelemetry.TimeReload();
-        
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeReload);
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.UseBatchFetch, Options.UseBatchFetch ? AWSSecretsManagerSemanticValues.True : AWSSecretsManagerSemanticValues.False);
-        
-        try
+        if (_logger != null)
         {
-            if (_logger != null)
+            await _logger.TimeAsync("Reloading secrets from AWS Secrets Manager", async () =>
             {
-                await _logger.TimeAsync("Reloading secrets from AWS Secrets Manager", async () =>
+                var oldValues = _loadedValues;
+
+                var newValues = Options.UseBatchFetch switch
                 {
-                    await PerformReloadAsync(cancellationToken, span).ConfigureAwait(false);
-                });
-            }
-            else
-            {
-                await PerformReloadAsync(cancellationToken, span).ConfigureAwait(false);
-            }
-        }
-        catch (Exception ex)
-        {
-            AWSSecretsManagerTelemetry.RecordError(span, ex, AWSSecretsManagerSemanticValues.OperationTypeReload);
-            throw;
-        }
-    }
-    
-    private async Task PerformReloadAsync(CancellationToken cancellationToken, Activity? span)
-    {
-        var oldValues = _loadedValues;
+                    true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
+                    _ => await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false)
+                };
 
-        var newValues = Options.UseBatchFetch switch
-        {
-            true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
-            _ => await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false)
-        };
-
-        var hasChanges = !oldValues.SetEquals(newValues);
-        if (hasChanges)
-        {
-            _loadedValues = newValues;
-            SetData(_loadedValues, triggerReload: true);
-            
-            var addedCount = newValues.Except(oldValues).Count();
-            var removedCount = oldValues.Except(newValues).Count();
-            
-            // Add telemetry for changes
-            AWSSecretsManagerTelemetry.SecretsLoaded.Add(newValues.Count,
-                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeReload));
-            
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretsChanged, AWSSecretsManagerSemanticValues.True);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretsAdded, addedCount);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretsRemoved, removedCount);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretCount, newValues.Count);
-            
-            _logger?.Information("Secret changes detected and reloaded. {AddedCount} added, {RemovedCount} removed",
-                addedCount, removedCount);
+                if (!oldValues.SetEquals(newValues))
+                {
+                    _loadedValues = newValues;
+                    SetData(_loadedValues, triggerReload: true);
+                    
+                    var addedCount = newValues.Except(oldValues).Count();
+                    var removedCount = oldValues.Except(newValues).Count();
+                    _logger.Information("Secret changes detected and reloaded. {AddedCount} added, {RemovedCount} removed",
+                        addedCount, removedCount);
+                }
+                else
+                {
+                    _logger.Debug("No secret changes detected");
+                }
+            });
         }
         else
         {
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretsChanged, AWSSecretsManagerSemanticValues.False);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretCount, oldValues.Count);
-            _logger?.Debug("No secret changes detected");
+            var oldValues = _loadedValues;
+
+            var newValues = Options.UseBatchFetch switch
+            {
+                true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
+                _ => await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false)
+            };
+
+            if (!oldValues.SetEquals(newValues))
+            {
+                _loadedValues = newValues;
+                SetData(_loadedValues, triggerReload: true);
+            }
         }
     }
 
@@ -342,7 +284,6 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         }
 
         var result = new List<SecretListEntry>();
-        var apiCallCount = 0;
 
         do
         {
@@ -350,27 +291,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
 
             var request = new ListSecretsRequest { NextToken = nextToken, Filters = Options.ListSecretsFilters };
 
-            // AWS API call with individual telemetry
-            using var apiCallSpan = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.AwsApiCall);
-            apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationListSecrets);
-            
-            // Add AWS region if available from client config
-            if (Client.Config?.RegionEndpoint?.SystemName != null)
-            {
-                apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.AwsRegion, Client.Config.RegionEndpoint.SystemName);
-            }
-
-            try
-            {
-                response = await Client.ListSecretsAsync(request, cancellationToken).ConfigureAwait(false);
-                apiCallCount++;
-                AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationListSecrets, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
-            }
-            catch (Exception ex)
-            {
-                AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationListSecrets, AWSSecretsManagerSemanticValues.ApiCallResultError, ex);
-                throw;
-            }
+            response = await Client.ListSecretsAsync(request, cancellationToken).ConfigureAwait(false);
 
             result.AddRange(response.SecretList);
         } while (response.NextToken != null);
@@ -379,119 +300,64 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
 
     private async Task<HashSet<(string, string)>> FetchConfigurationAsync(CancellationToken cancellationToken)
     {
-        using var span = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.FetchConfiguration);
-        
         var secrets = await FetchAllSecretsAsync(cancellationToken).ConfigureAwait(false);
         var configuration = new HashSet<(string, string)>();
-        var apiCallCount = 0;
-        var parseCount = 0;
-        var parseSuccessCount = 0;
-        
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeFetch);
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.UseBatchFetch, AWSSecretsManagerSemanticValues.False);
-        
-        try
+        foreach (var secret in secrets)
         {
-            foreach (var secret in secrets)
+            try
             {
+                if (!Options.SecretFilter(secret)) continue;
+
+                var request = new GetSecretValueRequest { SecretId = secret.ARN };
+                Options.ConfigureSecretValueRequest?.Invoke(request, new SecretValueContext(secret));
+                GetSecretValueResponse? secretValue;
+
                 try
                 {
-                    if (!Options.SecretFilter(secret)) continue;
+                    secretValue = await Client.GetSecretValueAsync(request, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ResourceNotFoundException) when (Options.IgnoreMissingValues)
+                {
+                    continue;
+                }
 
-                    var request = new GetSecretValueRequest { SecretId = secret.ARN };
-                    Options.ConfigureSecretValueRequest?.Invoke(request, new SecretValueContext(secret));
-                    GetSecretValueResponse? secretValue;
-
-                    // AWS API call with individual telemetry
-                    using var apiCallSpan = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.AwsApiCall);
-                    apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue);
-                    
-                    // Add AWS region if available from client config
-                    if (Client.Config?.RegionEndpoint?.SystemName != null)
+                var secretEntry = Options.AcceptedSecretArns.Count > 0
+                    ? new SecretListEntry
                     {
-                        apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.AwsRegion, Client.Config.RegionEndpoint.SystemName);
+                        ARN = secret.ARN,
+                        Name = secretValue.Name,
+                        CreatedDate = secretValue.CreatedDate
                     }
+                    : secret;
 
-                    try
+                var secretName = secretEntry.Name;
+                var secretString = secretValue.SecretString;
+
+                if (secretString is null)
+                    continue;
+
+                if (TryParseJson(secretString, out var jElement))
+                {
+                    // [MaybeNullWhen(false)] attribute is available in .net standard since version 2.1
+                    var values = ExtractValues(jElement!, secretName);
+
+                    foreach (var (key, value) in values)
                     {
-                        secretValue = await Client.GetSecretValueAsync(request, cancellationToken).ConfigureAwait(false);
-                        apiCallCount++;
-                        AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
-                    }
-                    catch (ResourceNotFoundException ex) when (Options.IgnoreMissingValues)
-                    {
-                        AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultError, ex);
-                        continue;
-                    }
-                    catch (Exception ex)
-                    {
-                        AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultError, ex);
-                        throw;
-                    }
-
-                    var secretEntry = Options.AcceptedSecretArns.Count > 0
-                        ? new SecretListEntry
-                        {
-                            ARN = secret.ARN,
-                            Name = secretValue.Name,
-                            CreatedDate = secretValue.CreatedDate
-                        }
-                        : secret;
-
-                    var secretName = secretEntry.Name;
-                    var secretString = secretValue.SecretString;
-
-                    if (secretString is null)
-                        continue;
-
-                    // JSON parsing with telemetry
-                    using var jsonParseSpan = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.JsonParse);
-                    using var jsonTimer = AWSSecretsManagerTelemetry.TimeJsonParse();
-                    
-                    parseCount++;
-                    if (TryParseJson(secretString, out var jElement))
-                    {
-                        parseSuccessCount++;
-                        jsonParseSpan?.SetTag(AWSSecretsManagerSemanticAttributes.JsonParseSuccess, AWSSecretsManagerSemanticValues.True);
-                        
-                        // [MaybeNullWhen(false)] attribute is available in .net standard since version 2.1
-                        var values = ExtractValues(jElement!, secretName);
-
-                        foreach (var (key, value) in values)
-                        {
-                            var configurationKey = Options.KeyGenerator(secretEntry, key);
-                            configuration.Add((configurationKey, value));
-                        }
-                    }
-                    else
-                    {
-                        jsonParseSpan?.SetTag(AWSSecretsManagerSemanticAttributes.JsonParseSuccess, AWSSecretsManagerSemanticValues.False);
-                        var configurationKey = Options.KeyGenerator(secretEntry, secretName);
-                        configuration.Add((configurationKey, secretString));
+                        var configurationKey = Options.KeyGenerator(secretEntry, key);
+                        configuration.Add((configurationKey, value));
                     }
                 }
-                catch (ResourceNotFoundException e)
+                else
                 {
-                    // Record the original AWS exception for telemetry
-                    span?.AddException(e);
-                    span?.SetStatus(ActivityStatusCode.Error, e.Message);
-                    throw new MissingSecretValueException($"Error retrieving secret value (Secret: {secret.Name} Arn: {secret.ARN})", secret.Name, secret.ARN, e);
+                    var configurationKey = Options.KeyGenerator(secretEntry, secretName);
+                    configuration.Add((configurationKey, secretString));
                 }
             }
-            
-            // Set final telemetry tags using proper constants
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretCount, configuration.Count);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallCount, apiCallCount);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.JsonParseCount, parseCount);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.JsonParseSuccessCount, parseSuccessCount);
+            catch (ResourceNotFoundException e)
+            {
+                throw new MissingSecretValueException($"Error retrieving secret value (Secret: {secret.Name} Arn: {secret.ARN})", secret.Name, secret.ARN, e);
+            }
         }
-        catch (Exception ex)
-        {
-            span?.AddException(ex);
-            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            throw;
-        }
-        
         return configuration;
     }
 
@@ -510,156 +376,85 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
 
     private async Task<HashSet<(string, string)>> FetchConfigurationBatchAsync(CancellationToken cancellationToken)
     {
-        using var span = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.FetchConfigurationBatch);
-        
         var secrets = await FetchAllSecretsAsync(cancellationToken).ConfigureAwait(false);
         var configuration = new HashSet<(string, string)>();
         var chunked = ChunkList(secrets, Options.SecretFilter, 20);
-        var apiCallCount = 0;
-        var totalBatchSize = 0;
-        var parseCount = 0;
-        var parseSuccessCount = 0;
-        
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeBatchFetch);
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.UseBatchFetch, AWSSecretsManagerSemanticValues.True);
-        span?.SetTag(AWSSecretsManagerSemanticAttributes.BatchSize, chunked.Count);
-        
-        try
+        foreach (var secretSet in chunked)
         {
-            foreach (var secretSet in chunked)
+            var request = new BatchGetSecretValueRequest() { SecretIdList = secretSet.Select(a => a.ARN).ToList() };
+            Options.ConfigureBatchSecretValueRequest(request,
+                secretSet.Select(a => new SecretValueContext(a)).ToList());
+            //Paranoia safety code here... probably not be needed with our chunking strategy.
+            var resultSet = new List<BatchGetSecretValueResponse>();
+
+            try
             {
-                var request = new BatchGetSecretValueRequest() { SecretIdList = secretSet.Select(a => a.ARN).ToList() };
-                Options.ConfigureBatchSecretValueRequest(request,
-                    secretSet.Select(a => new SecretValueContext(a)).ToList());
-                //Paranoia safety code here... probably not be needed with our chunking strategy.
-                var resultSet = new List<BatchGetSecretValueResponse>();
-                totalBatchSize += secretSet.Count;
-
-                try
+                var secretValueSet = default(BatchGetSecretValueResponse);
+                do
                 {
-                    var secretValueSet = default(BatchGetSecretValueResponse);
-                    do
+                    request.NextToken = secretValueSet?.NextToken;
+                    secretValueSet = await Client.BatchGetSecretValueAsync(request, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (secretValueSet.Errors?.Any() == true)
                     {
-                        request.NextToken = secretValueSet?.NextToken;
-                        
-                        // AWS API call with individual telemetry
-                        using var apiCallSpan = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.AwsApiCall);
-                        apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallOperation, AWSSecretsManagerSemanticValues.ApiCallOperationBatchGetSecretValue);
-                        
-                        // Add AWS region if available from client config
-                        if (Client.Config?.RegionEndpoint?.SystemName != null)
+                        var set = HandleBatchErrors(secretValueSet);
+
+                        if (!Options.IgnoreMissingValues || set.Any(e => e is not MissingSecretValueException))
                         {
-                            apiCallSpan?.SetTag(AWSSecretsManagerSemanticAttributes.AwsRegion, Client.Config.RegionEndpoint.SystemName);
+                            throw new AggregateException(set);
                         }
-
-                        try
-                        {
-                            secretValueSet = await Client.BatchGetSecretValueAsync(request, cancellationToken)
-                                .ConfigureAwait(false);
-                            apiCallCount++;
-                            AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationBatchGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultSuccess);
-                        }
-                        catch (Exception ex)
-                        {
-                            AWSSecretsManagerTelemetry.RecordApiCall(apiCallSpan, AWSSecretsManagerSemanticValues.ApiCallOperationBatchGetSecretValue, AWSSecretsManagerSemanticValues.ApiCallResultError, ex);
-                            throw;
-                        }
-                        
-                        if (secretValueSet.Errors?.Any() == true)
-                        {
-                            var set = HandleBatchErrors(secretValueSet);
-
-                            if (!Options.IgnoreMissingValues || set.Any(e => e is not MissingSecretValueException))
-                            {
-                                // Record batch errors for telemetry
-                                foreach (var error in set)
-                                {
-                                    span?.AddException(error);
-                                }
-                                span?.SetStatus(ActivityStatusCode.Error, "Batch operation contained errors");
-                                throw new AggregateException(set);
-                            }
-                        }
-                        resultSet.Add(secretValueSet);
-                    } while (!string.IsNullOrWhiteSpace(secretValueSet.NextToken));
-
-                    foreach (var (secretValue, secret) in
-                             resultSet.SelectMany(a => a.SecretValues.Select(b => b))
-                                 .Join(secretSet, a => a.ARN, b => b.ARN, (a, b) => (a, b)))
-                    {
-
-                        var secretEntry = Options.AcceptedSecretArns.Count > 0
-                            ? new SecretListEntry
-                            {
-                                ARN = secret.ARN,
-                                Name = secretValue.Name,
-                                CreatedDate = secretValue.CreatedDate
-                            }
-                            : secret;
-
-                        var secretName = secretEntry.Name;
-                        var secretString = secretValue.SecretString;
-
-                        if (secretString is null)
-                            continue;
-
-                        // JSON parsing with telemetry
-                        using var jsonParseSpan = AWSSecretsManagerTelemetry.Source.StartActivity(AWSSecretsManagerSpanNames.JsonParse);
-                        using var jsonTimer = AWSSecretsManagerTelemetry.TimeJsonParse();
-                        
-                        parseCount++;
-                        if (TryParseJson(secretString, out var jElement))
-                        {
-                            parseSuccessCount++;
-                            jsonParseSpan?.SetTag(AWSSecretsManagerSemanticAttributes.JsonParseSuccess, AWSSecretsManagerSemanticValues.True);
-                            
-                            // [MaybeNullWhen(false)] attribute is available in .net standard since version 2.1
-                            var values = ExtractValues(jElement!, secretName);
-
-                            foreach (var (key, value) in values)
-                            {
-                                var configurationKey = Options.KeyGenerator(secretEntry, key);
-                                configuration.Add((configurationKey, value));
-                            }
-                        }
-                        else
-                        {
-                            jsonParseSpan?.SetTag(AWSSecretsManagerSemanticAttributes.JsonParseSuccess, AWSSecretsManagerSemanticValues.False);
-                            var configurationKey = Options.KeyGenerator(secretEntry, secretName);
-                            configuration.Add((configurationKey, secretString));
-                        }
-
                     }
-                }
-                catch (ResourceNotFoundException e)
-                {
-                    // Record the original AWS exception for telemetry
-                    span?.AddException(e);
-                    span?.SetStatus(ActivityStatusCode.Error, e.Message);
-                    throw new MissingSecretValueException(
-                        $"Error retrieving secret value (Secrets: {secretSet.Select(a => a.Name).Aggregate((a, b) => a + "," + b)} " +
-                        $"Arns: {secretSet.Select(a => a.ARN).Aggregate((a, b) => a + "," + b)})",
-                        secretSet.Select(a => a.Name).Aggregate((a, b) => a + "," + b),
-                        secretSet.Select(a => a.ARN).Aggregate((a, b) => a + "," + b), e);
-                }
+                    resultSet.Add(secretValueSet);
+                } while (!string.IsNullOrWhiteSpace(secretValueSet.NextToken));
 
+                foreach (var (secretValue, secret) in
+                         resultSet.SelectMany(a => a.SecretValues.Select(b => b))
+                             .Join(secretSet, a => a.ARN, b => b.ARN, (a, b) => (a, b)))
+                {
+
+                    var secretEntry = Options.AcceptedSecretArns.Count > 0
+                        ? new SecretListEntry
+                        {
+                            ARN = secret.ARN,
+                            Name = secretValue.Name,
+                            CreatedDate = secretValue.CreatedDate
+                        }
+                        : secret;
+
+                    var secretName = secretEntry.Name;
+                    var secretString = secretValue.SecretString;
+
+                    if (secretString is null)
+                        continue;
+
+                    if (TryParseJson(secretString, out var jElement))
+                    {
+                        // [MaybeNullWhen(false)] attribute is available in .net standard since version 2.1
+                        var values = ExtractValues(jElement!, secretName);
+
+                        foreach (var (key, value) in values)
+                        {
+                            var configurationKey = Options.KeyGenerator(secretEntry, key);
+                            configuration.Add((configurationKey, value));
+                        }
+                    }
+                    else
+                    {
+                        var configurationKey = Options.KeyGenerator(secretEntry, secretName);
+                        configuration.Add((configurationKey, secretString));
+                    }
+
+                }
             }
-            
-            // Set final telemetry tags using proper constants
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.SecretCount, configuration.Count);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.ApiCallCount, apiCallCount);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.JsonParseCount, parseCount);
-            span?.SetTag(AWSSecretsManagerSemanticAttributes.JsonParseSuccessCount, parseSuccessCount);
-            
-            // Record batch size metric
-            AWSSecretsManagerTelemetry.BatchSize.Record(totalBatchSize,
-                new KeyValuePair<string, object?>(AWSSecretsManagerSemanticAttributes.OperationType, AWSSecretsManagerSemanticValues.OperationTypeBatchFetch));
-        }
-        catch (Exception ex)
-        {
-            span?.AddException(ex);
-            span?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            throw;
+            catch (ResourceNotFoundException e)
+            {
+                throw new MissingSecretValueException(
+                    $"Error retrieving secret value (Secrets: {secretSet.Select(a => a.Name).Aggregate((a, b) => a + "," + b)} " +
+                    $"Arns: {secretSet.Select(a => a.ARN).Aggregate((a, b) => a + "," + b)})",
+                    secretSet.Select(a => a.Name).Aggregate((a, b) => a + "," + b),
+                    secretSet.Select(a => a.ARN).Aggregate((a, b) => a + "," + b), e);
+            }
+
         }
 
         return configuration;
@@ -693,7 +488,6 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         }).ToList();
         return set;
     }
-
 
     /// <summary>
     /// Releases all resources used by the <see cref="SecretsManagerConfigurationProvider"/>.
