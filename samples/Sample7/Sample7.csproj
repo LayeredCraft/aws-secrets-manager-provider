@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
+      <PackageReference Include="AWSSDK.SecretsManager" Version="4.0.1.3" />
+      <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
+    <PackageReference Include="System.Text.Json" Version="9.0.9" />
         <ProjectReference Include="..\..\src\AWSSecretsManager.Provider\AWSSecretsManager.Provider.csproj" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.9" />
     </ItemGroup>
 
     <PropertyGroup>
