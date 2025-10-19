@@ -7,13 +7,14 @@ on:
 permissions: write-all
 jobs:
   build:
-    uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@v6.1
+    uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@v6.2
     with:
       solution: AWSSecretsManager.sln
       hasTests: true
       dotnetVersion: |
         8.0.x
         9.0.x
+        10.0.x
       runCdk: false
       useMtpRunner: true
       testDirectory: "tests"
