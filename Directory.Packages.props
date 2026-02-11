@@ -6,12 +6,12 @@
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.4.6" />
   </ItemGroup>
   <ItemGroup Label="LayeredCraft">
-    <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.1.6.17" />
+    <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.1.7.18" />
   </ItemGroup>
   <ItemGroup Label="Microsoft">
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.3" />
   </ItemGroup>
   <!--
     NOTE: This repo intentionally pins Microsoft.Extensions.Configuration by TFM.
@@ -21,10 +21,10 @@
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net9.0'">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.13" />
   </ItemGroup>
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.3" />
   </ItemGroup>
   <ItemGroup Label="Testing">
     <PackageVersion Include="AutoFixture" Version="4.18.1" />
