@@ -407,10 +407,18 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                     resultSet.Add(secretValueSet);
                 } while (!string.IsNullOrWhiteSpace(secretValueSet.NextToken));
 
-                foreach (var (secretValue, secret) in
-                         resultSet.SelectMany(a => a.SecretValues.Select(b => b))
-                             .Join(secretSet, a => a.ARN, b => b.ARN, (a, b) => (a, b)))
+                foreach (var secretValue in resultSet.SelectMany(a => a.SecretValues))
                 {
+                    // Match the returned secret back to our input list using flexible ARN/name comparison.
+                    // AWS returns full ARNs (with a random suffix like "-AbCdEf") even when the caller
+                    // supplied a short name or partial ARN, so exact equality on ARN alone would silently
+                    // drop every result when AcceptedSecretArns contains anything other than full ARNs.
+                    var secret = secretSet.FirstOrDefault(s =>
+                        s.ARN.Equals(secretValue.ARN, StringComparison.OrdinalIgnoreCase) ||
+                        secretValue.ARN.EndsWith(s.ARN, StringComparison.OrdinalIgnoreCase) ||
+                        s.ARN.Equals(secretValue.Name, StringComparison.OrdinalIgnoreCase));
+
+                    if (secret == null) continue;
 
                     var secretEntry = Options.AcceptedSecretArns.Count > 0
                         ? new SecretListEntry
