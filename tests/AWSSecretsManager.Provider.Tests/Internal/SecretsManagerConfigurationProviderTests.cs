@@ -466,4 +466,106 @@ public class SecretsManagerConfigurationProviderTests
         sut.Get(testEntry.Name, nameof(RootObject.Mid), nameof(MidLevel.Leaf), nameof(Leaf.Property))
             .Should().Be(test.Mid.Leaf.Property);
     }
+
+    // Partial ARN matching tests
+    // When AcceptedSecretArns contains short names or partial ARNs, AWS Secrets Manager returns the
+    // full ARN (with a random "-AbCdEf" suffix) in the BatchGetSecretValue response. The previous
+    // exact-equality join on ARN silently dropped every result in those cases.
+
+    [Theory, CustomAutoData]
+    public void Batch_fetch_with_accepted_secret_names_should_match_returned_secrets(
+        [Frozen] IAmazonSecretsManager secretsManager,
+        [Frozen] SecretsManagerConfigurationProviderOptions options,
+        SecretsManagerConfigurationProvider sut,
+        IFixture fixture)
+    {
+        const string secretName = "MyTestSecret";
+        var fullArn = $"arn:aws:secretsmanager:us-east-1:123456789012:secret:{secretName}-AbCdEf";
+        const string secretValue = "test-value";
+
+        var batchResponse = fixture.Build<BatchGetSecretValueResponse>()
+            .With(p => p.SecretValues, new List<SecretValueEntry>
+            {
+                new SecretValueEntry { ARN = fullArn, Name = secretName, SecretString = secretValue }
+            })
+            .Without(p => p.Errors)
+            .Without(p => p.NextToken)
+            .Create();
+
+        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(batchResponse));
+
+        options.UseBatchFetch = true;
+        options.AcceptedSecretArns = new List<string> { secretName };
+
+        sut.Load();
+
+        secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
+        sut.Get(secretName).Should().Be(secretValue);
+    }
+
+    [Theory, CustomAutoData]
+    public void Batch_fetch_with_accepted_partial_arns_should_match_returned_secrets(
+        [Frozen] IAmazonSecretsManager secretsManager,
+        [Frozen] SecretsManagerConfigurationProviderOptions options,
+        SecretsManagerConfigurationProvider sut,
+        IFixture fixture)
+    {
+        const string secretName = "MyTestSecret";
+        const string partialArn = $"{secretName}-AbCdEf";
+        var fullArn = $"arn:aws:secretsmanager:us-east-1:123456789012:secret:{partialArn}";
+        const string secretValue = "test-value";
+
+        var batchResponse = fixture.Build<BatchGetSecretValueResponse>()
+            .With(p => p.SecretValues, new List<SecretValueEntry>
+            {
+                new SecretValueEntry { ARN = fullArn, Name = secretName, SecretString = secretValue }
+            })
+            .Without(p => p.Errors)
+            .Without(p => p.NextToken)
+            .Create();
+
+        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(batchResponse));
+
+        options.UseBatchFetch = true;
+        options.AcceptedSecretArns = new List<string> { partialArn };
+
+        sut.Load();
+
+        secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
+        sut.Get(secretName).Should().Be(secretValue);
+    }
+
+    [Theory, CustomAutoData]
+    public void Batch_fetch_with_accepted_full_arns_should_match_returned_secrets(
+        [Frozen] IAmazonSecretsManager secretsManager,
+        [Frozen] SecretsManagerConfigurationProviderOptions options,
+        SecretsManagerConfigurationProvider sut,
+        IFixture fixture)
+    {
+        const string secretName = "MyTestSecret";
+        var fullArn = $"arn:aws:secretsmanager:us-east-1:123456789012:secret:{secretName}-AbCdEf";
+        const string secretValue = "test-value";
+
+        var batchResponse = fixture.Build<BatchGetSecretValueResponse>()
+            .With(p => p.SecretValues, new List<SecretValueEntry>
+            {
+                new SecretValueEntry { ARN = fullArn, Name = secretName, SecretString = secretValue }
+            })
+            .Without(p => p.Errors)
+            .Without(p => p.NextToken)
+            .Create();
+
+        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(batchResponse));
+
+        options.UseBatchFetch = true;
+        options.AcceptedSecretArns = new List<string> { fullArn };
+
+        sut.Load();
+
+        secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
+        sut.Get(secretName).Should().Be(secretValue);
+    }
 }
