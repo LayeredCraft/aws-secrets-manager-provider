@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="AWS SDK">
-    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.4.6" />
+    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.4.14" />
   </ItemGroup>
   <ItemGroup Label="LayeredCraft">
     <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.1.7.18" />
