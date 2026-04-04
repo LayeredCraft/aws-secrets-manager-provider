@@ -568,4 +568,86 @@ public class SecretsManagerConfigurationProviderTests
         secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
         sut.Get(secretName).Should().Be(secretValue);
     }
+
+    // JSON null value handling tests
+    // Previously, JsonValueKind.Null was grouped with JsonValueKind.Undefined and threw FormatException.
+    // The fix correctly maps null JSON values to null configuration entries.
+
+    [Theory, CustomAutoData]
+    public void JSON_with_null_property_value_should_not_throw([Frozen] SecretListEntry testEntry,
+        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
+        SecretsManagerConfigurationProvider sut, IFixture fixture)
+    {
+        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
+            .With(p => p.SecretString, """{"Key": null}""")
+            .Without(p => p.SecretBinary)
+            .Create();
+
+        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(listSecretsResponse));
+
+        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(getSecretValueResponse));
+
+        var loadAction = () => sut.Load();
+        loadAction.Should().NotThrow();
+
+        sut.HasKey(testEntry.Name, "Key").Should().BeTrue();
+        sut.Get(testEntry.Name, "Key").Should().BeNull();
+    }
+
+    [Theory, CustomAutoData]
+    public void JSON_with_nested_null_property_value_should_not_throw([Frozen] SecretListEntry testEntry,
+        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
+        SecretsManagerConfigurationProvider sut, IFixture fixture)
+    {
+        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
+            .With(p => p.SecretString, """{"Parent": {"Child": null}}""")
+            .Without(p => p.SecretBinary)
+            .Create();
+
+        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(listSecretsResponse));
+
+        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(getSecretValueResponse));
+
+        var loadAction = () => sut.Load();
+        loadAction.Should().NotThrow();
+
+        sut.HasKey(testEntry.Name, "Parent", "Child").Should().BeTrue();
+        sut.Get(testEntry.Name, "Parent", "Child").Should().BeNull();
+    }
+
+    [Theory, CustomAutoData]
+    public void Batch_fetch_JSON_with_null_property_value_should_not_throw(
+        [Frozen] IAmazonSecretsManager secretsManager,
+        [Frozen] SecretsManagerConfigurationProviderOptions options,
+        SecretsManagerConfigurationProvider sut,
+        IFixture fixture)
+    {
+        const string secretName = "MySecret";
+        const string fullArn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:MySecret-AbCdEf";
+
+        var batchResponse = fixture.Build<BatchGetSecretValueResponse>()
+            .With(p => p.SecretValues, new List<SecretValueEntry>
+            {
+                new SecretValueEntry { ARN = fullArn, Name = secretName, SecretString = """{"Key": null}""" }
+            })
+            .Without(p => p.Errors)
+            .Without(p => p.NextToken)
+            .Create();
+
+        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(batchResponse));
+
+        options.UseBatchFetch = true;
+        options.AcceptedSecretArns = new List<string> { fullArn };
+
+        var loadAction = () => sut.Load();
+        loadAction.Should().NotThrow();
+
+        sut.HasKey(secretName, "Key").Should().BeTrue();
+        sut.Get(secretName, "Key").Should().BeNull();
+    }
 }

@@ -29,7 +29,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     public IAmazonSecretsManager Client { get; }
 
     private readonly ILogger? _logger;
-    private HashSet<(string, string)> _loadedValues = new();
+    private HashSet<(string, string?)> _loadedValues = new();
     private Task? _pollingTask;
     private CancellationTokenSource? _cancellationToken;
 
@@ -197,7 +197,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         }
     }
 
-    private static IEnumerable<(string key, string value)> ExtractValues(JsonElement? jsonElement, string prefix)
+    private static IEnumerable<(string key, string? value)> ExtractValues(JsonElement? jsonElement, string prefix)
     {
         if (jsonElement == null)
         {
@@ -233,11 +233,6 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                 break;
             }
             case JsonValueKind.True:
-            {
-                var value = element.GetBoolean();
-                yield return (prefix, value.ToString());
-                break;
-            }
             case JsonValueKind.False:
             {
                 var value = element.GetBoolean();
@@ -256,8 +251,12 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                 }
                 break;
             }
-            case JsonValueKind.Undefined:
             case JsonValueKind.Null:
+            {
+                yield return (prefix, null);
+                break;
+            }
+            case JsonValueKind.Undefined:
             default:
             {
                 throw new FormatException("unsupported json token");
@@ -265,9 +264,9 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         }
     }
 
-    private void SetData(IEnumerable<(string, string)> values, bool triggerReload)
+    private void SetData(IEnumerable<(string, string?)> values, bool triggerReload)
     {
-        Data = values.ToDictionary<(string, string), string, string?>(x => x.Item1, x => x.Item2, StringComparer.InvariantCultureIgnoreCase);
+        Data = values.ToDictionary<(string, string?), string, string?>(x => x.Item1, x => x.Item2, StringComparer.InvariantCultureIgnoreCase);
         if (triggerReload)
         {
             OnReload();
@@ -298,10 +297,10 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         return result;
     }
 
-    private async Task<HashSet<(string, string)>> FetchConfigurationAsync(CancellationToken cancellationToken)
+    private async Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
     {
         var secrets = await FetchAllSecretsAsync(cancellationToken).ConfigureAwait(false);
-        var configuration = new HashSet<(string, string)>();
+        var configuration = new HashSet<(string, string?)>();
         foreach (var secret in secrets)
         {
             try
@@ -374,10 +373,10 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
             .ToList();
     }
 
-    private async Task<HashSet<(string, string)>> FetchConfigurationBatchAsync(CancellationToken cancellationToken)
+    private async Task<HashSet<(string, string?)>> FetchConfigurationBatchAsync(CancellationToken cancellationToken)
     {
         var secrets = await FetchAllSecretsAsync(cancellationToken).ConfigureAwait(false);
-        var configuration = new HashSet<(string, string)>();
+        var configuration = new HashSet<(string, string?)>();
         var chunked = ChunkList(secrets, Options.SecretFilter, 20);
         foreach (var secretSet in chunked)
         {
