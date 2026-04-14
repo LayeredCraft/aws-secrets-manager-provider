@@ -324,8 +324,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                     ? new SecretListEntry
                     {
                         ARN = secret.ARN,
-                        Name = secretValue.Name,
-                        CreatedDate = secretValue.CreatedDate
+                        Name = secretValue.Name
                     }
                     : secret;
 
@@ -423,8 +422,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                         ? new SecretListEntry
                         {
                             ARN = secret.ARN,
-                            Name = secretValue.Name,
-                            CreatedDate = secretValue.CreatedDate
+                            Name = secretValue.Name
                         }
                         : secret;
 
