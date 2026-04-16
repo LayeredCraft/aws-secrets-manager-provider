@@ -18,5 +18,6 @@ jobs:
         11.0.x
       runCdk: false
       enableCodeCoverage: true
+      useMtpRunner: true
       coverageThreshold: 70
     secrets: inherit
