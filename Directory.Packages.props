@@ -6,7 +6,7 @@
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.4.17" />
   </ItemGroup>
   <ItemGroup Label="LayeredCraft">
-    <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.1.8.20" />
+    <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.2.0" />
   </ItemGroup>
   <ItemGroup Label="Microsoft">
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.6" />
