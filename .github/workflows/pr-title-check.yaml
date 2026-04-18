@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
+permissions:
+  pull-requests: read
+  statuses: write
+
 jobs:
   validate:
     uses: LayeredCraft/devops-templates/.github/workflows/pr-title-check.yml@v8.0
