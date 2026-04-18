@@ -1,0 +1,20 @@
+name: Release Drafter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  draft:
+    uses: LayeredCraft/devops-templates/.github/workflows/release-drafter.yml@v8.0
+    with:
+      event_name: ${{ github.event_name }}
+      pr_draft: ${{ github.event.pull_request.draft == true }}
