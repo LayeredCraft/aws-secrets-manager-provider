@@ -1,0 +1,95 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+commitish: main
+
+version-resolver:
+  major:
+    labels:
+      - 'breaking-change'
+  minor:
+    labels:
+      - 'type: feat'
+  patch:
+    labels:
+      - 'type: fix'
+      - 'type: docs'
+      - 'type: refactor'
+      - 'type: test'
+      - 'type: chore'
+      - 'type: ci'
+      - 'type: revert'
+  default: patch
+
+autolabeler:
+  - label: 'type: feat'
+    title:
+      - '/^feat(\(.+\))?(!)?:/i'
+  - label: 'type: fix'
+    title:
+      - '/^fix(\(.+\))?(!)?:/i'
+  - label: 'type: docs'
+    title:
+      - '/^docs(\(.+\))?(!)?:/i'
+  - label: 'type: refactor'
+    title:
+      - '/^refactor(\(.+\))?(!)?:/i'
+  - label: 'type: test'
+    title:
+      - '/^test(\(.+\))?(!)?:/i'
+  - label: 'type: chore'
+    title:
+      - '/^chore(\(.+\))?(!)?:/i'
+  - label: 'type: ci'
+    title:
+      - '/^ci(\(.+\))?(!)?:/i'
+  - label: 'type: revert'
+    title:
+      - '/^revert(\(.+\))?(!)?:/i'
+  - label: 'breaking-change'
+    title:
+      - '/^(feat|fix|docs|refactor|test|chore|ci|revert)(\([^)]*\))?!:/i'
+
+categories:
+  - title: '⚠️ Breaking Changes'
+    labels:
+      - 'breaking-change'
+  - title: '🚀 Features'
+    labels:
+      - 'type: feat'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'type: fix'
+  - title: '📚 Documentation'
+    labels:
+      - 'type: docs'
+  - title: '🔄 Refactoring'
+    labels:
+      - 'type: refactor'
+  - title: '✅ Tests'
+    labels:
+      - 'type: test'
+  - title: '🔧 Maintenance'
+    labels:
+      - 'type: chore'
+      - 'type: ci'
+      - 'type: revert'
+
+include-labels:
+  - 'type: feat'
+  - 'type: fix'
+  - 'type: docs'
+  - 'type: refactor'
+  - 'type: test'
+  - 'type: chore'
+  - 'type: ci'
+  - 'type: revert'
+  - 'breaking-change'
+
+exclude-labels:
+  - 'skip-changelog'
+  - 'internal'
+
+template: |
+  ## Changes
+
+  $CHANGES
