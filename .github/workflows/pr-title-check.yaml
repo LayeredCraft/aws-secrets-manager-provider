@@ -1,0 +1,9 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate:
+    uses: LayeredCraft/devops-templates/.github/workflows/pr-title-check.yml@v8.0
