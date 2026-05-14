@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   draft:
-    uses: LayeredCraft/devops-templates/.github/workflows/release-drafter.yml@v8.0
+    uses: LayeredCraft/devops-templates/.github/workflows/release-drafter.yml@v8.2
     with:
       event_name: ${{ github.event_name }}
       pr_draft: ${{ github.event.pull_request.draft == true }}
