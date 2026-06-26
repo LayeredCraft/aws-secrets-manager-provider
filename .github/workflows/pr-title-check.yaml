@@ -10,4 +10,4 @@ permissions:
 
 jobs:
   validate:
-    uses: LayeredCraft/devops-templates/.github/workflows/pr-title-check.yml@v10.0
+    uses: LayeredCraft/devops-templates/.github/workflows/pr-title-check.yml@v10.1
