@@ -7,7 +7,7 @@ on:
 permissions: write-all
 jobs:
   build:
-    uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@v8.2
+    uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@v10.0
     with:
       solution: AWSSecretsManager.slnx
       hasTests: true

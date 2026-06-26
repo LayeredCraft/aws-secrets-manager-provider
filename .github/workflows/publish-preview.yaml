@@ -10,11 +10,13 @@ on:
       - 'README.md'
       - 'samples/**'
 
-permissions: write-all
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  publish:
-    uses: LayeredCraft/devops-templates/.github/workflows/publish-preview.yml@v8.2
+  build:
+    uses: LayeredCraft/devops-templates/.github/workflows/publish-preview.yml@v10.0
     with:
       solution: AWSSecretsManager.slnx
       dotnetVersion: |
@@ -24,3 +26,14 @@ jobs:
         11.0.x
       hasTests: true
     secrets: inherit
+
+  push:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: LayeredCraft/devops-templates/.github/actions/nuget-push@v10.0
+        with:
+          nuget_user: ${{ secrets.NUGET_USER }}
