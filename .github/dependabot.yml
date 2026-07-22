@@ -1,4 +1,15 @@
 version: 2
+
+multi-ecosystem-groups:
+  infrastructure:
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+    open-pull-requests-limit: 25
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
 updates:
   - package-ecosystem: "nuget"
     directory: "/"
@@ -6,7 +17,28 @@ updates:
       interval: "weekly"
       day: "wednesday"
     open-pull-requests-limit: 25
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
-      dotnet:
+      dotnet-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
         patterns:
           - "*"
+      dotnet-major:
+        update-types:
+          - "major"
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "infrastructure"
+    cooldown:
+      default-days: 7
