@@ -3,43 +3,43 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="AWS SDK">
-    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.4" />
+    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.6" />
   </ItemGroup>
   <ItemGroup Label="LayeredCraft">
-    <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.2.3" />
+    <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.2.4" />
   </ItemGroup>
   <ItemGroup Label="Microsoft Logging (net9.0)" Condition="'$(TargetFramework)' == 'net9.0'">
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="[9.0.17, 10.0.0)" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="[9.0.17, 10.0.0)" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="[9.0.17, 10.0.0)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="[9.0.18, 10.0.0)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="[9.0.18, 10.0.0)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="[9.0.18, 10.0.0)" />
   </ItemGroup>
   <!-- Microsoft.Extensions.* packages ship parallel stable and preview build lines.
        Pin each per-TargetFramework with bounded ranges so Dependabot can raise
        lower bounds without crossing into the next major/preview line. -->
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.18" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[8.0.0, 9.0.0)" />
   </ItemGroup>
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net9.0'">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[9.0.17, 10.0.0)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[9.0.18, 10.0.0)" />
   </ItemGroup>
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[10.0.9, 11.0.0)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[10.0.10, 11.0.0)" />
   </ItemGroup>
   <!-- Lower bound is a prerelease, which causes NuGet to consider prerelease
        candidates for this package ID. Use a letter-led prerelease marker on
        the exclusive upper bound so the range stays below all 12.0.0 previews
        as well as 12.0.0 stable. -->
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net11.0'">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[11.0.0-preview.5.26302.115, 12.0.0-a)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[11.0.0-preview.6.26359.118, 12.0.0-a)" />
   </ItemGroup>
   <ItemGroup Label="Testing">
     <PackageVersion Include="AutoFixture" Version="4.18.1" />
     <PackageVersion Include="AutoFixture.AutoNSubstitute" Version="4.18.1" />
     <PackageVersion Include="AutoFixture.Xunit3" Version="4.19.0" />
-    <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
+    <PackageVersion Include="AwesomeAssertions" Version="9.5.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.9.0" />
-    <PackageVersion Include="NSubstitute" Version="5.3.0" />
+    <PackageVersion Include="NSubstitute" Version="6.0.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="3.2.2" />
   </ItemGroup>
