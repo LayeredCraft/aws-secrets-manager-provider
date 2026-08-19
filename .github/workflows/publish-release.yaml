@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build:
-    uses: LayeredCraft/devops-templates/.github/workflows/publish-release.yml@v10.4
+    uses: LayeredCraft/devops-templates/.github/workflows/publish-release.yml@v10.5
     with:
       solution: AWSSecretsManager.slnx
       dotnetVersion: |
@@ -27,6 +27,6 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: LayeredCraft/devops-templates/.github/actions/nuget-push@v10.4
+      - uses: LayeredCraft/devops-templates/.github/actions/nuget-push@v10.5
         with:
           nuget_user: ${{ secrets.NUGET_USER }}
