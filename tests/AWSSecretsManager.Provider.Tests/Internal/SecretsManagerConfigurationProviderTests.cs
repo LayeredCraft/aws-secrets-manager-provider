@@ -5,51 +5,42 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
-using AutoFixture;
-using AutoFixture.Xunit3;
 using AWSSecretsManager.Provider.Internal;
 using AWSSecretsManager.Provider.Tests.Types;
-using NSubstitute;
 using System.Text.Json;
 using Xunit;
+using Compono;
+using Compono.XunitV3;
 using AwesomeAssertions;
-using NSubstitute.ExceptionExtensions;
 
 namespace AWSSecretsManager.Provider.Tests.Internal;
 
 public class SecretsManagerConfigurationProviderTests
 {
-    [Theory, CustomAutoData]
-    public void Simple_values_in_string_can_be_handled([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public void Simple_values_in_string_can_be_handled([Shared] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueResponse,
-        [Frozen] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut)
+        [Shared] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
         sut.Get(testEntry.Name).Should().Be(getSecretValueResponse.SecretString);
     }
 
-    [Theory, CustomAutoData]
-    public void Complex_JSON_objects_in_string_can_be_handled([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, RootObject test, [Frozen] IAmazonSecretsManager secretsManager,
-        SecretsManagerConfigurationProvider sut, IFixture fixture)
+    [Theory, Compose<ComponoTestProfile>]
+    public void Complex_JSON_objects_in_string_can_be_handled([Shared] SecretListEntry testEntry,
+        ListSecretsResponse listSecretsResponse, RootObject test, [Shared] IAmazonSecretsManager secretsManager,
+        SecretsManagerConfigurationProvider sut)
     {
-        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
-            .With(p => p.SecretString, JsonSerializer.Serialize(test))
-            .Without(p => p.SecretBinary)
-            .Create();
+        var getSecretValueResponse = new GetSecretValueResponse { SecretString = JsonSerializer.Serialize(test) };
 
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
@@ -60,21 +51,16 @@ public class SecretsManagerConfigurationProviderTests
             .Should().Be(test.Mid.Leaf.Property);
     }
 
-    [Theory, CustomAutoData]
-    public void Complex_JSON_objects_with_arrays_can_be_handled([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public void Complex_JSON_objects_with_arrays_can_be_handled([Shared] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, RootObjectWithArray test,
-        [Frozen] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut, IFixture fixture)
+        [Shared] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut)
     {
-        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
-            .With(p => p.SecretString, JsonSerializer.Serialize(test))
-            .Without(p => p.SecretBinary)
-            .Create();
+        var getSecretValueResponse = new GetSecretValueResponse { SecretString = JsonSerializer.Serialize(test) };
 
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
@@ -84,21 +70,16 @@ public class SecretsManagerConfigurationProviderTests
             .Should().Be(test.Mids[0].Property);
     }
 
-    [Theory, CustomAutoData]
-    public void Array_Of_Complex_JSON_objects_with_arrays_can_be_handled([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public void Array_Of_Complex_JSON_objects_with_arrays_can_be_handled([Shared] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, RootObjectWithArray[] test,
-        [Frozen] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut, IFixture fixture)
+        [Shared] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut)
     {
-        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
-            .With(p => p.SecretString, JsonSerializer.Serialize(test))
-            .Without(p => p.SecretBinary)
-            .Create();
+        var getSecretValueResponse = new GetSecretValueResponse { SecretString = JsonSerializer.Serialize(test) };
 
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
@@ -112,55 +93,47 @@ public class SecretsManagerConfigurationProviderTests
             .Should().Be(test[1].Mids[0].Property);
     }
 
-    [Theory, CustomAutoData]
-    public void Values_in_binary_are_ignored([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
-        SecretsManagerConfigurationProvider sut, IFixture fixture)
+    [Theory, Compose<ComponoTestProfile>]
+    public void Values_in_binary_are_ignored([Shared] SecretListEntry testEntry,
+        ListSecretsResponse listSecretsResponse, [Shared] IAmazonSecretsManager secretsManager,
+        SecretsManagerConfigurationProvider sut)
     {
-        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
-            .With(p => p.SecretBinary)
-            .Without(p => p.SecretString)
-            .Create();
+        var getSecretValueResponse = new GetSecretValueResponse { SecretBinary = new System.IO.MemoryStream() };
 
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
         sut.HasKey(testEntry.Name).Should().BeFalse();
     }
 
-    [Theory, CustomAutoData]
-    public void Secrets_can_be_filtered_out_via_options([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
+    [Theory, Compose<ComponoTestProfile>]
+    public void Secrets_can_be_filtered_out_via_options([Shared] SecretListEntry testEntry,
+        ListSecretsResponse listSecretsResponse, [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
         options.SecretFilter = _ => false;
 
         sut.Load();
 
-        secretsManager.DidNotReceive()
-            .GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>());
+        secretsManager.Verify().GetSecretValueAsync(Match.Any<GetSecretValueRequest>(), Match.Any<CancellationToken>()).Never();
 
         sut.Get(testEntry.Name).Should().BeNull();
     }
 
-    [Theory, CustomAutoData]
-    public void Secrets_can_be_listed_explicitly_and_not_searched([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public void Secrets_can_be_listed_explicitly_and_not_searched([Shared] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueResponse,
-        [Frozen] IAmazonSecretsManager secretsManager, [Frozen] SecretsManagerConfigurationProviderOptions options,
+        [Shared] IAmazonSecretsManager secretsManager, [Shared] SecretsManagerConfigurationProviderOptions options,
         SecretsManagerConfigurationProvider sut)
     {
         const string secretKey = "KEY";
         var firstSecretArn = listSecretsResponse.SecretList.Select(x => x.ARN).First();
-        secretsManager.GetSecretValueAsync(Arg.Is<GetSecretValueRequest>(x => x.SecretId.Equals(firstSecretArn)),
-            Arg.Any<CancellationToken>()).Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         options.SecretFilter = _ => true;
         options.AcceptedSecretArns = new List<string> { firstSecretArn };
@@ -168,41 +141,44 @@ public class SecretsManagerConfigurationProviderTests
 
         sut.Load();
 
-        secretsManager.DidNotReceive()
-            .GetSecretValueAsync(Arg.Is<GetSecretValueRequest>(x => !x.SecretId.Equals(firstSecretArn)),
-                Arg.Any<CancellationToken>());
-        secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
+        secretsManager.Verify().GetSecretValueAsync(
+            Match.Is<GetSecretValueRequest>(x => x.SecretId == firstSecretArn),
+            Match.Any<CancellationToken>()).Once();
+        secretsManager.Verify().GetSecretValueAsync(
+            Match.Is<GetSecretValueRequest>(x => x.SecretId != firstSecretArn),
+            Match.Any<CancellationToken>()).Never();
+        secretsManager.Verify().ListSecretsAsync(Match.Any<ListSecretsRequest>(), Match.Any<CancellationToken>()).Never();
 
         sut.Get(testEntry.Name).Should().BeNull();
         sut.Get(secretKey).Should().Be(getSecretValueResponse.SecretString);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Secrets_listed_explicitly_and_saved_to_configuration_with_their_names_as_keys(
-        GetSecretValueResponse getSecretValueResponse, [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
+        GetSecretValueResponse getSecretValueResponse, [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.GetSecretValueAsync(
-            Arg.Is<GetSecretValueRequest>(x => x.SecretId.Equals(getSecretValueResponse.ARN)),
-            Arg.Any<CancellationToken>()).Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         options.AcceptedSecretArns = new List<string> { getSecretValueResponse.ARN };
 
         var loadAction = () => sut.Load();
         loadAction.Should().NotThrow();
 
-        secretsManager.DidNotReceive()
-            .GetSecretValueAsync(
-                Arg.Is<GetSecretValueRequest>(x => !x.SecretId.Equals(getSecretValueResponse.ARN)),
-                Arg.Any<CancellationToken>());
+        secretsManager.Verify().GetSecretValueAsync(
+            Match.Is<GetSecretValueRequest>(x => x.SecretId == getSecretValueResponse.ARN),
+            Match.Any<CancellationToken>()).Once();
+        secretsManager.Verify().GetSecretValueAsync(
+            Match.Is<GetSecretValueRequest>(x => x.SecretId != getSecretValueResponse.ARN),
+            Match.Any<CancellationToken>()).Never();
 
         sut.Get(getSecretValueResponse.Name).Should().Be(getSecretValueResponse.SecretString);
     }
 
-    [Theory, CustomAutoData]
-    public void Secrets_can_be_filtered_out_via_options_on_fetching([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public void Secrets_can_be_filtered_out_via_options_on_fetching([Shared] SecretListEntry testEntry,
         GetSecretValueResponse getSecretValueResponse,
-        [Frozen] IAmazonSecretsManager secretsManager, [Frozen] SecretsManagerConfigurationProviderOptions options,
+        [Shared] IAmazonSecretsManager secretsManager, [Shared] SecretsManagerConfigurationProviderOptions options,
         SecretsManagerConfigurationProvider sut)
     {
         options.ListSecretsFilters = new List<Filter>
@@ -213,33 +189,28 @@ public class SecretsManagerConfigurationProviderTests
             SecretList = new List<SecretListEntry> { testEntry }
         };
 
-        secretsManager.ListSecretsAsync(
-            Arg.Is<ListSecretsRequest>(request => request.Filters == options.ListSecretsFilters),
-            Arg.Any<CancellationToken>()).Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
-        secretsManager.Received(1)
-            .ListSecretsAsync(Arg.Is<ListSecretsRequest>(request => request.Filters == options.ListSecretsFilters),
-                Arg.Any<CancellationToken>());
+        secretsManager.Verify().ListSecretsAsync(
+            Match.Is<ListSecretsRequest>(request => ReferenceEquals(request.Filters, options.ListSecretsFilters)),
+            Match.Any<CancellationToken>()).Once();
 
         sut.Get(testEntry.Name).Should().Be(getSecretValueResponse.SecretString);
     }
 
-    [Theory, CustomAutoData]
-    public void Keys_can_be_customized_via_options([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public void Keys_can_be_customized_via_options([Shared] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueResponse, string newKey,
-        [Frozen] IAmazonSecretsManager secretsManager, [Frozen] SecretsManagerConfigurationProviderOptions options,
+        [Shared] IAmazonSecretsManager secretsManager, [Shared] SecretsManagerConfigurationProviderOptions options,
         SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         options.KeyGenerator = (_, _) => newKey;
 
@@ -249,16 +220,14 @@ public class SecretsManagerConfigurationProviderTests
         sut.Get(newKey).Should().Be(getSecretValueResponse.SecretString);
     }
 
-    [Theory, CustomAutoData]
-    public void Keys_should_be_case_insensitive([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public void Keys_should_be_case_insensitive([Shared] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueResponse,
-        [Frozen] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut)
+        [Shared] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
@@ -266,52 +235,46 @@ public class SecretsManagerConfigurationProviderTests
         sut.Get(testEntry.Name.ToUpper()).Should().Be(getSecretValueResponse.SecretString);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Get_secret_value_request_can_be_customized_via_options(ListSecretsResponse listSecretsResponse,
         GetSecretValueResponse getSecretValueResponse,
-        string secretVersionStage, [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
+        string secretVersionStage, [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         options.ConfigureSecretValueRequest = (request, _) => request.VersionStage = secretVersionStage;
 
         sut.Load();
 
-        secretsManager.Received(1)
-            .GetSecretValueAsync(Arg.Is<GetSecretValueRequest>(x => x.VersionStage == secretVersionStage),
-                Arg.Any<CancellationToken>());
+        secretsManager.Verify().GetSecretValueAsync(
+            Match.Is<GetSecretValueRequest>(x => x.VersionStage == secretVersionStage),
+            Match.Any<CancellationToken>()).Once();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Should_throw_on_missing_secret_value(ListSecretsResponse listSecretsResponse,
-        [Frozen] IAmazonSecretsManager secretsManager,
+        [Shared] IAmazonSecretsManager secretsManager,
         SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Throws(new ResourceNotFoundException("Oops"));
+        secretsManager.ThrowOnGetSecretValue(new ResourceNotFoundException("Oops"));
 
         var loadAction = () => sut.Load();
         loadAction.Should().Throw<MissingSecretValueException>();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Should_skip_on_missing_secret_value_if_configured(ListSecretsResponse listSecretsResponse,
-        [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
+        [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Throws(new ResourceNotFoundException("Oops"));
+        secretsManager.ThrowOnGetSecretValue(new ResourceNotFoundException("Oops"));
 
         options.IgnoreMissingValues = true;
 
@@ -319,24 +282,21 @@ public class SecretsManagerConfigurationProviderTests
         loadAction.Should().NotThrow();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Should_throw_on_batch_missing_secret_values(ListSecretsResponse listSecretsResponse,
-        [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut,
-        IFixture fixture)
+        [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        var batchGetSecretValueResponse = fixture.Build<BatchGetSecretValueResponse>()
-            .With(p => p.SecretValues)
-            .With(p => p.Errors,
-                new List<APIErrorType> { new APIErrorType { ErrorCode = nameof(ResourceNotFoundException) } })
-            .Without(p => p.NextToken)
-            .Create();
+        var batchGetSecretValueResponse = new BatchGetSecretValueResponse
+        {
+            SecretValues = new List<SecretValueEntry>(),
+            Errors = new List<APIErrorType> { new APIErrorType { ErrorCode = nameof(ResourceNotFoundException), Message = "Oops", SecretId = "missing-secret" } },
+            ResponseMetadata = new Amazon.Runtime.ResponseMetadata { RequestId = "request-id" }
+        };
 
-        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(),
-            Arg.Any<CancellationToken>()).Returns(Task.FromResult(batchGetSecretValueResponse));
+        secretsManager.QueueBatchGetSecretValueResponses(batchGetSecretValueResponse);
 
         options.UseBatchFetch = true;
 
@@ -344,24 +304,21 @@ public class SecretsManagerConfigurationProviderTests
         loadAction.Should().Throw<AggregateException>();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Should_skip_on_missing_batch_secret_values_if_configured(ListSecretsResponse listSecretsResponse,
-        [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut,
-        IFixture fixture)
+        [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        var batchGetSecretValueResponse = fixture.Build<BatchGetSecretValueResponse>()
-            .With(p => p.SecretValues)
-            .With(p => p.Errors,
-                new List<APIErrorType> { new APIErrorType { ErrorCode = nameof(ResourceNotFoundException) } })
-            .Without(p => p.NextToken)
-            .Create();
+        var batchGetSecretValueResponse = new BatchGetSecretValueResponse
+        {
+            SecretValues = new List<SecretValueEntry>(),
+            Errors = new List<APIErrorType> { new APIErrorType { ErrorCode = nameof(ResourceNotFoundException), Message = "Oops", SecretId = "missing-secret" } },
+            ResponseMetadata = new Amazon.Runtime.ResponseMetadata { RequestId = "request-id" }
+        };
 
-        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(),
-            Arg.Any<CancellationToken>()).Returns(Task.FromResult(batchGetSecretValueResponse));
+        secretsManager.QueueBatchGetSecretValueResponses(batchGetSecretValueResponse);
 
         options.UseBatchFetch = true;
         options.IgnoreMissingValues = true;
@@ -370,93 +327,101 @@ public class SecretsManagerConfigurationProviderTests
         loadAction.Should().NotThrow();
     }
 
-    [Theory, CustomAutoData]
-    public void Should_poll_and_reload_when_secrets_changed([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public void Should_poll_and_reload_when_secrets_changed([Shared] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueInitialResponse,
-        GetSecretValueResponse getSecretValueUpdatedResponse, [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut,
-        Action<object> changeCallback, object changeCallbackState)
+        GetSecretValueResponse getSecretValueUpdatedResponse, [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options, SecretsManagerConfigurationProvider sut,
+        object changeCallbackState)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        var callbackCallCount = 0;
+        object? callbackState = null;
+        void ChangeCallback(object? state)
+        {
+            callbackCallCount++;
+            callbackState = state;
+        }
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueInitialResponse), Task.FromResult(getSecretValueUpdatedResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
+        secretsManager.QueueGetSecretValueResponses(getSecretValueInitialResponse);
 
         options.PollingInterval = TimeSpan.FromMilliseconds(100);
 
-        sut.GetReloadToken().RegisterChangeCallback(changeCallback, changeCallbackState);
+        sut.GetReloadToken().RegisterChangeCallback(ChangeCallback, changeCallbackState);
 
         sut.Load();
         sut.Get(testEntry.Name).Should().Be(getSecretValueInitialResponse.SecretString);
+        secretsManager.QueueGetSecretValueResponses(getSecretValueUpdatedResponse);
 
         Thread.Sleep(200);
 
-        changeCallback.Received(1)(changeCallbackState);
+        callbackCallCount.Should().Be(1);
+        callbackState.Should().BeSameAs(changeCallbackState);
         sut.Get(testEntry.Name).Should().Be(getSecretValueUpdatedResponse.SecretString);
     }
 
-    [Theory, CustomAutoData]
-    public async Task Should_reload_when_forceReload_called([Frozen] SecretListEntry testEntry,
+    [Theory, Compose<ComponoTestProfile>]
+    public async Task Should_reload_when_forceReload_called([Shared] SecretListEntry testEntry,
         ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueInitialResponse,
-        GetSecretValueResponse getSecretValueUpdatedResponse, [Frozen] IAmazonSecretsManager secretsManager,
+        GetSecretValueResponse getSecretValueUpdatedResponse, [Shared] IAmazonSecretsManager secretsManager,
         SecretsManagerConfigurationProvider sut,
-        Action<object> changeCallback, object changeCallbackState)
+        object changeCallbackState)
     {
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        var callbackCallCount = 0;
+        object? callbackState = null;
+        void ChangeCallback(object? state)
+        {
+            callbackCallCount++;
+            callbackState = state;
+        }
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueInitialResponse), Task.FromResult(getSecretValueUpdatedResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
+        secretsManager.QueueGetSecretValueResponses(getSecretValueInitialResponse);
 
-        sut.GetReloadToken().RegisterChangeCallback(changeCallback, changeCallbackState);
+        sut.GetReloadToken().RegisterChangeCallback(ChangeCallback, changeCallbackState);
 
         sut.Load();
         sut.Get(testEntry.Name).Should().Be(getSecretValueInitialResponse.SecretString);
+        secretsManager.QueueGetSecretValueResponses(getSecretValueUpdatedResponse);
 
         await sut.ForceReloadAsync(CancellationToken.None);
 
-        changeCallback.Received(1)(changeCallbackState);
+        callbackCallCount.Should().Be(1);
+        callbackState.Should().BeSameAs(changeCallbackState);
         sut.Get(testEntry.Name).Should().Be(getSecretValueUpdatedResponse.SecretString);
     }
 
     [Theory]
-    [CustomInlineAutoData("{THIS IS NOT AN OBJECT}")]
-    [CustomInlineAutoData("[THIS IS NOT AN ARRAY]")]
-    public void Incorrect_json_should_be_processed_as_string(string content, [Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, GetSecretValueResponse getSecretValueResponse,
-        [Frozen] IAmazonSecretsManager secretsManager, SecretsManagerConfigurationProvider sut)
+    [InlineData("{THIS IS NOT AN OBJECT}")]
+    [InlineData("[THIS IS NOT AN ARRAY]")]
+    public void Incorrect_json_should_be_processed_as_string(string content)
     {
-        getSecretValueResponse.SecretString = content;
+        var testEntry = new SecretListEntry { Name = "test-secret" };
+        var listSecretsResponse = new ListSecretsResponse { SecretList = new List<SecretListEntry> { testEntry } };
+        var getSecretValueResponse = new GetSecretValueResponse { SecretString = content };
+        var secretsManager = Composer.Create(builder => builder.UseGeneratedTestDoubles()).Create<IAmazonSecretsManager>();
+        var sut = new SecretsManagerConfigurationProvider(secretsManager, new SecretsManagerConfigurationProviderOptions(), null);
 
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
-
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
         sut.Get(testEntry.Name).Should().Be(getSecretValueResponse.SecretString);
     }
 
-    [Theory, CustomAutoData]
-    public void JSON_with_leading_spaces_should_be_processed_as_JSON([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, RootObject test, [Frozen] IAmazonSecretsManager secretsManager,
-        SecretsManagerConfigurationProvider sut, IFixture fixture)
+    [Theory, Compose<ComponoTestProfile>]
+    public void JSON_with_leading_spaces_should_be_processed_as_JSON([Shared] SecretListEntry testEntry,
+        ListSecretsResponse listSecretsResponse, RootObject test, [Shared] IAmazonSecretsManager secretsManager,
+        SecretsManagerConfigurationProvider sut)
     {
         var secretString = " " + JsonSerializer.Serialize(test);
 
-        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
-            .With(p => p.SecretString, secretString)
-            .Without(p => p.SecretBinary)
-            .Create();
+        var getSecretValueResponse = new GetSecretValueResponse { SecretString = secretString };
 
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         sut.Load();
 
@@ -472,100 +437,94 @@ public class SecretsManagerConfigurationProviderTests
     // full ARN (with a random "-AbCdEf" suffix) in the BatchGetSecretValue response. The previous
     // exact-equality join on ARN silently dropped every result in those cases.
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Batch_fetch_with_accepted_secret_names_should_match_returned_secrets(
-        [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options,
-        SecretsManagerConfigurationProvider sut,
-        IFixture fixture)
+        [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options,
+        SecretsManagerConfigurationProvider sut)
     {
         const string secretName = "MyTestSecret";
         var fullArn = $"arn:aws:secretsmanager:us-east-1:123456789012:secret:{secretName}-AbCdEf";
         const string secretValue = "test-value";
 
-        var batchResponse = fixture.Build<BatchGetSecretValueResponse>()
-            .With(p => p.SecretValues, new List<SecretValueEntry>
+        var batchResponse = new BatchGetSecretValueResponse
+        {
+            SecretValues = new List<SecretValueEntry>
             {
                 new SecretValueEntry { ARN = fullArn, Name = secretName, SecretString = secretValue }
-            })
-            .Without(p => p.Errors)
-            .Without(p => p.NextToken)
-            .Create();
+            },
+            Errors = new List<APIErrorType>()
+        };
 
-        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(batchResponse));
+        secretsManager.QueueBatchGetSecretValueResponses(batchResponse);
 
         options.UseBatchFetch = true;
         options.AcceptedSecretArns = new List<string> { secretName };
 
         sut.Load();
 
-        secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
+        secretsManager.Verify().ListSecretsAsync(Match.Any<ListSecretsRequest>(), Match.Any<CancellationToken>()).Never();
         sut.Get(secretName).Should().Be(secretValue);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Batch_fetch_with_accepted_partial_arns_should_match_returned_secrets(
-        [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options,
-        SecretsManagerConfigurationProvider sut,
-        IFixture fixture)
+        [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options,
+        SecretsManagerConfigurationProvider sut)
     {
         const string secretName = "MyTestSecret";
         const string partialArn = $"{secretName}-AbCdEf";
         var fullArn = $"arn:aws:secretsmanager:us-east-1:123456789012:secret:{partialArn}";
         const string secretValue = "test-value";
 
-        var batchResponse = fixture.Build<BatchGetSecretValueResponse>()
-            .With(p => p.SecretValues, new List<SecretValueEntry>
+        var batchResponse = new BatchGetSecretValueResponse
+        {
+            SecretValues = new List<SecretValueEntry>
             {
                 new SecretValueEntry { ARN = fullArn, Name = secretName, SecretString = secretValue }
-            })
-            .Without(p => p.Errors)
-            .Without(p => p.NextToken)
-            .Create();
+            },
+            Errors = new List<APIErrorType>()
+        };
 
-        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(batchResponse));
+        secretsManager.QueueBatchGetSecretValueResponses(batchResponse);
 
         options.UseBatchFetch = true;
         options.AcceptedSecretArns = new List<string> { partialArn };
 
         sut.Load();
 
-        secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
+        secretsManager.Verify().ListSecretsAsync(Match.Any<ListSecretsRequest>(), Match.Any<CancellationToken>()).Never();
         sut.Get(secretName).Should().Be(secretValue);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Batch_fetch_with_accepted_full_arns_should_match_returned_secrets(
-        [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options,
-        SecretsManagerConfigurationProvider sut,
-        IFixture fixture)
+        [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options,
+        SecretsManagerConfigurationProvider sut)
     {
         const string secretName = "MyTestSecret";
         var fullArn = $"arn:aws:secretsmanager:us-east-1:123456789012:secret:{secretName}-AbCdEf";
         const string secretValue = "test-value";
 
-        var batchResponse = fixture.Build<BatchGetSecretValueResponse>()
-            .With(p => p.SecretValues, new List<SecretValueEntry>
+        var batchResponse = new BatchGetSecretValueResponse
+        {
+            SecretValues = new List<SecretValueEntry>
             {
                 new SecretValueEntry { ARN = fullArn, Name = secretName, SecretString = secretValue }
-            })
-            .Without(p => p.Errors)
-            .Without(p => p.NextToken)
-            .Create();
+            },
+            Errors = new List<APIErrorType>()
+        };
 
-        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(batchResponse));
+        secretsManager.QueueBatchGetSecretValueResponses(batchResponse);
 
         options.UseBatchFetch = true;
         options.AcceptedSecretArns = new List<string> { fullArn };
 
         sut.Load();
 
-        secretsManager.DidNotReceive().ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>());
+        secretsManager.Verify().ListSecretsAsync(Match.Any<ListSecretsRequest>(), Match.Any<CancellationToken>()).Never();
         sut.Get(secretName).Should().Be(secretValue);
     }
 
@@ -573,21 +532,16 @@ public class SecretsManagerConfigurationProviderTests
     // Previously, JsonValueKind.Null was grouped with JsonValueKind.Undefined and threw FormatException.
     // The fix correctly maps null JSON values to null configuration entries.
 
-    [Theory, CustomAutoData]
-    public void JSON_with_null_property_value_should_not_throw([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
-        SecretsManagerConfigurationProvider sut, IFixture fixture)
+    [Theory, Compose<ComponoTestProfile>]
+    public void JSON_with_null_property_value_should_not_throw([Shared] SecretListEntry testEntry,
+        ListSecretsResponse listSecretsResponse, [Shared] IAmazonSecretsManager secretsManager,
+        SecretsManagerConfigurationProvider sut)
     {
-        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
-            .With(p => p.SecretString, """{"Key": null}""")
-            .Without(p => p.SecretBinary)
-            .Create();
+        var getSecretValueResponse = new GetSecretValueResponse { SecretString = """{"Key": null}""" };
 
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         var loadAction = () => sut.Load();
         loadAction.Should().NotThrow();
@@ -596,21 +550,16 @@ public class SecretsManagerConfigurationProviderTests
         sut.Get(testEntry.Name, "Key").Should().BeNull();
     }
 
-    [Theory, CustomAutoData]
-    public void JSON_with_nested_null_property_value_should_not_throw([Frozen] SecretListEntry testEntry,
-        ListSecretsResponse listSecretsResponse, [Frozen] IAmazonSecretsManager secretsManager,
-        SecretsManagerConfigurationProvider sut, IFixture fixture)
+    [Theory, Compose<ComponoTestProfile>]
+    public void JSON_with_nested_null_property_value_should_not_throw([Shared] SecretListEntry testEntry,
+        ListSecretsResponse listSecretsResponse, [Shared] IAmazonSecretsManager secretsManager,
+        SecretsManagerConfigurationProvider sut)
     {
-        var getSecretValueResponse = fixture.Build<GetSecretValueResponse>()
-            .With(p => p.SecretString, """{"Parent": {"Child": null}}""")
-            .Without(p => p.SecretBinary)
-            .Create();
+        var getSecretValueResponse = new GetSecretValueResponse { SecretString = """{"Parent": {"Child": null}}""" };
 
-        secretsManager.ListSecretsAsync(Arg.Any<ListSecretsRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(listSecretsResponse));
+        secretsManager.SetListSecretsResponse(listSecretsResponse);
 
-        secretsManager.GetSecretValueAsync(Arg.Any<GetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(getSecretValueResponse));
+        secretsManager.QueueGetSecretValueResponses(getSecretValueResponse);
 
         var loadAction = () => sut.Load();
         loadAction.Should().NotThrow();
@@ -619,27 +568,25 @@ public class SecretsManagerConfigurationProviderTests
         sut.Get(testEntry.Name, "Parent", "Child").Should().BeNull();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Batch_fetch_JSON_with_null_property_value_should_not_throw(
-        [Frozen] IAmazonSecretsManager secretsManager,
-        [Frozen] SecretsManagerConfigurationProviderOptions options,
-        SecretsManagerConfigurationProvider sut,
-        IFixture fixture)
+        [Shared] IAmazonSecretsManager secretsManager,
+        [Shared] SecretsManagerConfigurationProviderOptions options,
+        SecretsManagerConfigurationProvider sut)
     {
         const string secretName = "MySecret";
         const string fullArn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:MySecret-AbCdEf";
 
-        var batchResponse = fixture.Build<BatchGetSecretValueResponse>()
-            .With(p => p.SecretValues, new List<SecretValueEntry>
+        var batchResponse = new BatchGetSecretValueResponse
+        {
+            SecretValues = new List<SecretValueEntry>
             {
                 new SecretValueEntry { ARN = fullArn, Name = secretName, SecretString = """{"Key": null}""" }
-            })
-            .Without(p => p.Errors)
-            .Without(p => p.NextToken)
-            .Create();
+            },
+            Errors = new List<APIErrorType>()
+        };
 
-        secretsManager.BatchGetSecretValueAsync(Arg.Any<BatchGetSecretValueRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(batchResponse));
+        secretsManager.QueueBatchGetSecretValueResponses(batchResponse);
 
         options.UseBatchFetch = true;
         options.AcceptedSecretArns = new List<string> { fullArn };

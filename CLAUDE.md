@@ -33,7 +33,7 @@ dotnet pack src/AWSSecretsManager.Provider/
 
 ### Core Architecture
 - **Main library**: `src/AWSSecretsManager.Provider/` - Contains the configuration provider implementation
-- **Tests**: `tests/AWSSecretsManager.Provider.Tests/` - XUnit v3 tests with NSubstitute for mocking
+- **Tests**: `tests/AWSSecretsManager.Provider.Tests/` - XUnit v3 tests with Compono/TestDoubles for composition and hand-rolled recording fakes where argument capture is needed
 - **Samples**: `samples/` - Multiple sample projects demonstrating different usage patterns
 
 ### Key Components
@@ -62,8 +62,9 @@ dotnet pack src/AWSSecretsManager.Provider/
 ## Testing Framework
 
 Uses **XUnit v3** with:
-- **NSubstitute** for mocking AWS services
-- **AutoFixture** for test data generation
+- **Compono.XunitV3** for generated test data via `[Compose<ComponoTestProfile>]`
+- **Compono.TestDoubles** for generated interface test doubles
+- **Compono.Bogus** for realistic string data where member-name conventions apply
 - **AwesomeAssertions** for enhanced assertions
 
 ## Target Frameworks
@@ -82,8 +83,9 @@ Uses **XUnit v3** with:
 
 ### Test Dependencies
 - `xunit.v3` - Test framework
-- `NSubstitute` - Mocking framework
-- `AutoFixture` - Test data generation
+- `Compono.XunitV3` - xUnit v3 composition attributes
+- `Compono.TestDoubles` - generated interface test doubles
+- `Compono.Bogus` - Bogus-backed composition for realistic string data
 - `AwesomeAssertions` - Enhanced assertions
 
 ## Development Notes

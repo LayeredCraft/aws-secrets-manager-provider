@@ -4,8 +4,8 @@ using Amazon.SecretsManager;
 using AWSSecretsManager.Provider.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using NSubstitute;
 using Xunit;
+using Compono.XunitV3;
 using AwesomeAssertions;
 
 namespace AWSSecretsManager.Provider.Tests.Internal;
@@ -17,7 +17,7 @@ public class SecretsManagerConfigurationSourceWithLoggerTests
         Environment.SetEnvironmentVariable("AWS_REGION", "us-east-1", EnvironmentVariableTarget.Process);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Constructor_throws_when_options_is_null(AWSCredentials credentials, ILogger<SecretsManagerConfigurationProvider> logger)
     {
         var action = () => new SecretsManagerConfigurationSourceWithLogger(credentials, null!, logger);
@@ -26,7 +26,7 @@ public class SecretsManagerConfigurationSourceWithLoggerTests
             .WithParameterName("options");
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Constructor_throws_when_logger_is_null(AWSCredentials credentials, SecretsManagerConfigurationProviderOptions options)
     {
         var action = () => new SecretsManagerConfigurationSourceWithLogger(credentials, options, null!);
@@ -35,7 +35,7 @@ public class SecretsManagerConfigurationSourceWithLoggerTests
             .WithParameterName("logger");
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Constructor_accepts_null_credentials(SecretsManagerConfigurationProviderOptions options, ILogger<SecretsManagerConfigurationProvider> logger)
     {
         var action = () => new SecretsManagerConfigurationSourceWithLogger(null, options, logger);
@@ -43,7 +43,7 @@ public class SecretsManagerConfigurationSourceWithLoggerTests
         action.Should().NotThrow();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_can_create_a_IConfigurationProvider_with_logger(AWSCredentials credentials, 
         SecretsManagerConfigurationProviderOptions options, ILogger<SecretsManagerConfigurationProvider> logger,
         IConfigurationBuilder configurationBuilder)
@@ -52,11 +52,10 @@ public class SecretsManagerConfigurationSourceWithLoggerTests
 
         var provider = sut.Build(configurationBuilder);
 
-        provider.Should().NotBeNull();
         provider.Should().BeOfType<SecretsManagerConfigurationProvider>();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_can_create_a_IConfigurationProvider_without_credentials(
         SecretsManagerConfigurationProviderOptions options, ILogger<SecretsManagerConfigurationProvider> logger,
         IConfigurationBuilder configurationBuilder)
@@ -65,47 +64,53 @@ public class SecretsManagerConfigurationSourceWithLoggerTests
 
         var provider = sut.Build(configurationBuilder);
 
-        provider.Should().NotBeNull();
         provider.Should().BeOfType<SecretsManagerConfigurationProvider>();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_invokes_config_client_method(AWSCredentials credentials,
-        ILogger<SecretsManagerConfigurationProvider> logger, IConfigurationBuilder configurationBuilder,
-        Action<AmazonSecretsManagerConfig> secretsManagerConfiguration)
+        ILogger<SecretsManagerConfigurationProvider> logger, IConfigurationBuilder configurationBuilder)
     {
+        var configureClientCalled = false;
         var options = new SecretsManagerConfigurationProviderOptions
         {
-            ConfigureSecretsManagerConfig = secretsManagerConfiguration
+            ConfigureSecretsManagerConfig = config => configureClientCalled = config is not null
         };
 
         var sut = new SecretsManagerConfigurationSourceWithLogger(credentials, options, logger);
 
         sut.Build(configurationBuilder);
 
-        secretsManagerConfiguration.Received(1)(Arg.Is<AmazonSecretsManagerConfig>(c => c != null));
+        configureClientCalled.Should().BeTrue();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_uses_given_client_factory_method(AWSCredentials credentials,
         ILogger<SecretsManagerConfigurationProvider> logger, IConfigurationBuilder configurationBuilder,
-        SecretsManagerConfigurationProviderOptions options, Func<IAmazonSecretsManager> clientFactory)
+        SecretsManagerConfigurationProviderOptions options)
     {
-        options.CreateClient = clientFactory;
+        var clientFactoryCalled = false;
+        options.CreateClient = () =>
+        {
+            clientFactoryCalled = true;
+            return new AmazonSecretsManagerClient(
+                new AnonymousAWSCredentials(),
+                new AmazonSecretsManagerConfig { RegionEndpoint = Amazon.RegionEndpoint.USEast1 });
+        };
 
         var sut = new SecretsManagerConfigurationSourceWithLogger(credentials, options, logger);
 
         var provider = sut.Build(configurationBuilder);
 
         provider.Should().NotBeNull();
-        clientFactory.Received(1)();
+        clientFactoryCalled.Should().BeTrue();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Region_property_can_be_set_and_read(AWSCredentials credentials,
-        SecretsManagerConfigurationProviderOptions options, ILogger<SecretsManagerConfigurationProvider> logger,
-        Amazon.RegionEndpoint region)
+        SecretsManagerConfigurationProviderOptions options, ILogger<SecretsManagerConfigurationProvider> logger)
     {
+        var region = Amazon.RegionEndpoint.USEast1;
         var sut = new SecretsManagerConfigurationSourceWithLogger(credentials, options, logger);
 
         sut.Region = region;
@@ -113,11 +118,11 @@ public class SecretsManagerConfigurationSourceWithLoggerTests
         sut.Region.Should().Be(region);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_uses_region_when_creating_client(AWSCredentials credentials,
-        ILogger<SecretsManagerConfigurationProvider> logger, IConfigurationBuilder configurationBuilder,
-        Amazon.RegionEndpoint region)
+        ILogger<SecretsManagerConfigurationProvider> logger, IConfigurationBuilder configurationBuilder)
     {
+        var region = Amazon.RegionEndpoint.USEast1;
         var configureClientCalled = false;
         var capturedConfig = default(AmazonSecretsManagerConfig);
         
