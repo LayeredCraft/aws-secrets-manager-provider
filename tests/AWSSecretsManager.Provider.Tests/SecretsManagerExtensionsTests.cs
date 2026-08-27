@@ -1,194 +1,216 @@
-using System;
 using Amazon;
 using Amazon.Runtime;
 using AWSSecretsManager.Provider.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using NSubstitute;
 using Xunit;
+using Compono;
+using Compono.XunitV3;
 using AwesomeAssertions;
 
 namespace AWSSecretsManager.Provider.Tests;
 
 public class SecretsManagerExtensionsTests
 {
-    private readonly IConfigurationBuilder configurationBuilder;
-
-    public SecretsManagerExtensionsTests()
+    [Theory, Compose<ComponoTestProfile>]
+    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_no_parameters([Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder = Substitute.For<IConfigurationBuilder>();
-    }
-
-    [Fact]
-    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_no_parameters()
-    {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder);
 
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSource>());
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSource)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_region(RegionEndpoint region)
+    [Theory, Compose<ComponoTestProfile>]
+    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_region([Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var region = RegionEndpoint.USEast1;
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, region: region);
 
-        configurationBuilder.Received(1).Add(Arg.Is<SecretsManagerConfigurationSource>(s => s.Region == region));
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s =>
+            s is SecretsManagerConfigurationSource source && source.Region == region)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_optionConfigurator(Action<SecretsManagerConfigurationProviderOptions> optionConfigurator)
+    [Theory, Compose<ComponoTestProfile>]
+    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_optionConfigurator([Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var configuratorCalled = false;
+        void OptionConfigurator(SecretsManagerConfigurationProviderOptions _) => configuratorCalled = true;
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
-        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, configurator: optionConfigurator);
+        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, configurator: OptionConfigurator);
 
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSource>());
-
-        optionConfigurator.Received(1)(Arg.Any<SecretsManagerConfigurationProviderOptions>());
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSource)).Once();
+        configuratorCalled.Should().BeTrue();
     }
 
-    [Theory, CustomAutoData]
-    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_credentials(AWSCredentials credentials)
+    [Theory, Compose<ComponoTestProfile>]
+    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_credentials(AWSCredentials credentials,
+        [Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, credentials);
 
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSource>());
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSource)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_credentials_and_region(AWSCredentials credentials, RegionEndpoint region)
+    [Theory, Compose<ComponoTestProfile>]
+    public void SecretsManagerConfigurationSource_can_be_added_via_convenience_method_with_credentials_and_region([Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var credentials = new AnonymousAWSCredentials();
+        var region = RegionEndpoint.USEast1;
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, credentials, region);
 
-        configurationBuilder.Received(1).Add(Arg.Is<SecretsManagerConfigurationSource>(s => s.Region == region));
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s =>
+            s is SecretsManagerConfigurationSource source && source.Region == region)).Once();
     }
 
-    // Tests for Logger-based overload
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_logger_creates_SecretsManagerConfigurationSourceWithLogger(ILogger<SecretsManagerConfigurationProvider> logger)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_logger_creates_SecretsManagerConfigurationSourceWithLogger(
+        ILogger<SecretsManagerConfigurationProvider> logger, [Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, logger);
 
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSourceWithLogger>());
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSourceWithLogger)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_logger_and_credentials(ILogger<SecretsManagerConfigurationProvider> logger, AWSCredentials credentials)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_logger_and_credentials(ILogger<SecretsManagerConfigurationProvider> logger,
+        AWSCredentials credentials, [Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, logger, credentials);
 
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSourceWithLogger>());
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSourceWithLogger)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_logger_and_region(ILogger<SecretsManagerConfigurationProvider> logger, RegionEndpoint region)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_logger_and_region(ILogger<SecretsManagerConfigurationProvider> logger,
+        [Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var region = RegionEndpoint.USEast1;
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, logger, region: region);
 
-        configurationBuilder.Received(1).Add(Arg.Is<SecretsManagerConfigurationSourceWithLogger>(s => s.Region == region));
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s =>
+            s is SecretsManagerConfigurationSourceWithLogger source && source.Region == region)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_logger_and_configurator(ILogger<SecretsManagerConfigurationProvider> logger, Action<SecretsManagerConfigurationProviderOptions> configurator)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_logger_and_configurator(ILogger<SecretsManagerConfigurationProvider> logger,
+        [Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var configuratorCalled = false;
+        void Configurator(SecretsManagerConfigurationProviderOptions _) => configuratorCalled = true;
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
-        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, logger, configurator: configurator);
+        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, logger, configurator: Configurator);
 
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSourceWithLogger>());
-        configurator.Received(1)(Arg.Any<SecretsManagerConfigurationProviderOptions>());
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSourceWithLogger)).Once();
+        configuratorCalled.Should().BeTrue();
     }
 
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_logger_and_all_parameters(ILogger<SecretsManagerConfigurationProvider> logger, AWSCredentials credentials, RegionEndpoint region, Action<SecretsManagerConfigurationProviderOptions> configurator)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_logger_and_all_parameters(ILogger<SecretsManagerConfigurationProvider> logger,
+        AWSCredentials credentials, [Shared] IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var region = RegionEndpoint.USEast1;
+        var configuratorCalled = false;
+        void Configurator(SecretsManagerConfigurationProviderOptions _) => configuratorCalled = true;
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
-        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, logger, credentials, region, configurator);
+        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, logger, credentials, region, Configurator);
 
-        configurationBuilder.Received(1).Add(Arg.Is<SecretsManagerConfigurationSourceWithLogger>(s => s.Region == region));
-        configurator.Received(1)(Arg.Any<SecretsManagerConfigurationProviderOptions>());
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s =>
+            s is SecretsManagerConfigurationSourceWithLogger source && source.Region == region)).Once();
+        configuratorCalled.Should().BeTrue();
     }
 
-    // Tests for LoggerFactory-based overload
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_loggerFactory_creates_logger_and_calls_logger_overload(ILoggerFactory loggerFactory)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_loggerFactory_creates_logger_and_calls_logger_overload(
+        [Shared] ILoggerFactory loggerFactory, ILogger<SecretsManagerConfigurationProvider> logger,
+        [Shared] IConfigurationBuilder configurationBuilder)
     {
-        var logger = Substitute.For<ILogger<SecretsManagerConfigurationProvider>>();
-        loggerFactory.CreateLogger<SecretsManagerConfigurationProvider>().Returns(logger);
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        loggerFactory.Configure().CreateLogger(Match.Any<string>()).Returns(logger);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, loggerFactory);
 
-        loggerFactory.Received(1).CreateLogger<SecretsManagerConfigurationProvider>();
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSourceWithLogger>());
+        loggerFactory.Verify().CreateLogger(Match.Any<string>()).Once();
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSourceWithLogger)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_loggerFactory_and_credentials(ILoggerFactory loggerFactory, AWSCredentials credentials)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_loggerFactory_and_credentials([Shared] ILoggerFactory loggerFactory,
+        ILogger<SecretsManagerConfigurationProvider> logger, AWSCredentials credentials,
+        [Shared] IConfigurationBuilder configurationBuilder)
     {
-        var logger = Substitute.For<ILogger<SecretsManagerConfigurationProvider>>();
-        loggerFactory.CreateLogger<SecretsManagerConfigurationProvider>().Returns(logger);
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        loggerFactory.Configure().CreateLogger(Match.Any<string>()).Returns(logger);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, loggerFactory, credentials);
 
-        loggerFactory.Received(1).CreateLogger<SecretsManagerConfigurationProvider>();
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSourceWithLogger>());
+        loggerFactory.Verify().CreateLogger(Match.Any<string>()).Once();
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSourceWithLogger)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_loggerFactory_and_region(ILoggerFactory loggerFactory, RegionEndpoint region)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_loggerFactory_and_region([Shared] ILoggerFactory loggerFactory,
+        ILogger<SecretsManagerConfigurationProvider> logger, [Shared] IConfigurationBuilder configurationBuilder)
     {
-        var logger = Substitute.For<ILogger<SecretsManagerConfigurationProvider>>();
-        loggerFactory.CreateLogger<SecretsManagerConfigurationProvider>().Returns(logger);
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var region = RegionEndpoint.USEast1;
+        loggerFactory.Configure().CreateLogger(Match.Any<string>()).Returns(logger);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
         SecretsManagerExtensions.AddSecretsManager(configurationBuilder, loggerFactory, region: region);
 
-        loggerFactory.Received(1).CreateLogger<SecretsManagerConfigurationProvider>();
-        configurationBuilder.Received(1).Add(Arg.Is<SecretsManagerConfigurationSourceWithLogger>(s => s.Region == region));
+        loggerFactory.Verify().CreateLogger(Match.Any<string>()).Once();
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s =>
+            s is SecretsManagerConfigurationSourceWithLogger source && source.Region == region)).Once();
     }
 
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_loggerFactory_and_configurator(ILoggerFactory loggerFactory, Action<SecretsManagerConfigurationProviderOptions> configurator)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_loggerFactory_and_configurator([Shared] ILoggerFactory loggerFactory,
+        ILogger<SecretsManagerConfigurationProvider> logger, [Shared] IConfigurationBuilder configurationBuilder)
     {
-        var logger = Substitute.For<ILogger<SecretsManagerConfigurationProvider>>();
-        loggerFactory.CreateLogger<SecretsManagerConfigurationProvider>().Returns(logger);
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var configuratorCalled = false;
+        void Configurator(SecretsManagerConfigurationProviderOptions _) => configuratorCalled = true;
+        loggerFactory.Configure().CreateLogger(Match.Any<string>()).Returns(logger);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
-        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, loggerFactory, configurator: configurator);
+        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, loggerFactory, configurator: Configurator);
 
-        loggerFactory.Received(1).CreateLogger<SecretsManagerConfigurationProvider>();
-        configurationBuilder.Received(1).Add(Arg.Any<SecretsManagerConfigurationSourceWithLogger>());
-        configurator.Received(1)(Arg.Any<SecretsManagerConfigurationProviderOptions>());
+        loggerFactory.Verify().CreateLogger(Match.Any<string>()).Once();
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s => s is SecretsManagerConfigurationSourceWithLogger)).Once();
+        configuratorCalled.Should().BeTrue();
     }
 
-    [Theory, CustomAutoData]
-    public void AddSecretsManager_with_loggerFactory_and_all_parameters(ILoggerFactory loggerFactory, AWSCredentials credentials, RegionEndpoint region, Action<SecretsManagerConfigurationProviderOptions> configurator)
+    [Theory, Compose<ComponoTestProfile>]
+    public void AddSecretsManager_with_loggerFactory_and_all_parameters([Shared] ILoggerFactory loggerFactory,
+        ILogger<SecretsManagerConfigurationProvider> logger, AWSCredentials credentials,
+        [Shared] IConfigurationBuilder configurationBuilder)
     {
-        var logger = Substitute.For<ILogger<SecretsManagerConfigurationProvider>>();
-        loggerFactory.CreateLogger<SecretsManagerConfigurationProvider>().Returns(logger);
-        configurationBuilder.Add(Arg.Any<IConfigurationSource>()).Returns(configurationBuilder);
+        var region = RegionEndpoint.USEast1;
+        var configuratorCalled = false;
+        void Configurator(SecretsManagerConfigurationProviderOptions _) => configuratorCalled = true;
+        loggerFactory.Configure().CreateLogger(Match.Any<string>()).Returns(logger);
+        configurationBuilder.Configure().Add(Match.Any<IConfigurationSource>()).Returns(configurationBuilder);
 
-        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, loggerFactory, credentials, region, configurator);
+        SecretsManagerExtensions.AddSecretsManager(configurationBuilder, loggerFactory, credentials, region, Configurator);
 
-        loggerFactory.Received(1).CreateLogger<SecretsManagerConfigurationProvider>();
-        configurationBuilder.Received(1).Add(Arg.Is<SecretsManagerConfigurationSourceWithLogger>(s => s.Region == region));
-        configurator.Received(1)(Arg.Any<SecretsManagerConfigurationProviderOptions>());
+        loggerFactory.Verify().CreateLogger(Match.Any<string>()).Once();
+        configurationBuilder.Verify().Add(Match.Is<IConfigurationSource>(s =>
+            s is SecretsManagerConfigurationSourceWithLogger source && source.Region == region)).Once();
+        configuratorCalled.Should().BeTrue();
     }
 }

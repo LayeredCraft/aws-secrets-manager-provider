@@ -1,10 +1,9 @@
-using System;
 using Amazon.Runtime;
 using Amazon.SecretsManager;
 using AWSSecretsManager.Provider.Internal;
 using Microsoft.Extensions.Configuration;
-using NSubstitute;
 using Xunit;
+using Compono.XunitV3;
 using AwesomeAssertions;
 
 namespace AWSSecretsManager.Provider.Tests.Internal;
@@ -16,18 +15,17 @@ public class SecretsManagerConfigurationSourceTests
         Environment.SetEnvironmentVariable("AWS_REGION", "us-east-1", EnvironmentVariableTarget.Process);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_can_create_a_IConfigurationProvider(IConfigurationBuilder configurationBuilder)
     {
         var sut = new SecretsManagerConfigurationSource();
 
         var provider = sut.Build(configurationBuilder);
 
-        provider.Should().NotBeNull();
         provider.Should().BeOfType<SecretsManagerConfigurationProvider>();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_can_create_a_IConfigurationProvider_with_credentials(AWSCredentials credentials,
         IConfigurationBuilder configurationBuilder)
     {
@@ -35,11 +33,10 @@ public class SecretsManagerConfigurationSourceTests
 
         var provider = sut.Build(configurationBuilder);
 
-        provider.Should().NotBeNull();
         provider.Should().BeOfType<SecretsManagerConfigurationProvider>();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_can_create_a_IConfigurationProvider_with_options(
         SecretsManagerConfigurationProviderOptions options, IConfigurationBuilder configurationBuilder)
     {
@@ -47,37 +44,43 @@ public class SecretsManagerConfigurationSourceTests
 
         var provider = sut.Build(configurationBuilder);
 
-        provider.Should().NotBeNull();
         provider.Should().BeOfType<SecretsManagerConfigurationProvider>();
     }
 
-    [Theory, CustomAutoData]
-    public void Build_invokes_config_client_method(IConfigurationBuilder configurationBuilder,
-        Action<AmazonSecretsManagerConfig> secretsManagerConfiguration)
+    [Theory, Compose<ComponoTestProfile>]
+    public void Build_invokes_config_client_method(IConfigurationBuilder configurationBuilder)
     {
+        var configureClientCalled = false;
         var options = new SecretsManagerConfigurationProviderOptions
         {
-            ConfigureSecretsManagerConfig = secretsManagerConfiguration
+            ConfigureSecretsManagerConfig = config => configureClientCalled = config is not null
         };
 
         var sut = new SecretsManagerConfigurationSource(options: options);
 
         sut.Build(configurationBuilder);
 
-        secretsManagerConfiguration.Received(1)(Arg.Is<AmazonSecretsManagerConfig>(c => c != null));
+        configureClientCalled.Should().BeTrue();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Build_uses_given_client_factory_method(IConfigurationBuilder configurationBuilder,
-        SecretsManagerConfigurationProviderOptions options, Func<IAmazonSecretsManager> clientFactory)
+        SecretsManagerConfigurationProviderOptions options)
     {
-        options.CreateClient = clientFactory;
+        var clientFactoryCalled = false;
+        options.CreateClient = () =>
+        {
+            clientFactoryCalled = true;
+            return new AmazonSecretsManagerClient(
+                new AnonymousAWSCredentials(),
+                new AmazonSecretsManagerConfig { RegionEndpoint = Amazon.RegionEndpoint.USEast1 });
+        };
 
         var sut = new SecretsManagerConfigurationSource(options: options);
 
         var provider = sut.Build(configurationBuilder);
 
         provider.Should().NotBeNull();
-        clientFactory.Received(1)();
+        clientFactoryCalled.Should().BeTrue();
     }
 }

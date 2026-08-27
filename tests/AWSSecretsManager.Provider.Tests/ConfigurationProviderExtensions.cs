@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Xunit;
+using Compono.XunitV3;
 using AwesomeAssertions;
 
 namespace AWSSecretsManager.Provider.Tests;
@@ -28,7 +29,7 @@ public static class ConfigurationProviderExtensions
 
 public class ConfigurationProviderExtensionsTests
 {
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Added_keys_are_found(ConfigurationProvider provider, string key, string value)
     {
         provider.Set(key, value);
@@ -36,7 +37,7 @@ public class ConfigurationProviderExtensionsTests
         ConfigurationProviderExtensions.HasKey(provider, key).Should().BeTrue();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Added_nested_keys_are_found(ConfigurationProvider provider, string firstKey, string secondKey, string value)
     {
         provider.Set($"{firstKey}{ConfigurationPath.KeyDelimiter}{secondKey}", value);
@@ -44,13 +45,13 @@ public class ConfigurationProviderExtensionsTests
         ConfigurationProviderExtensions.HasKey(provider, firstKey, secondKey).Should().BeTrue();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Non_added_keys_are_not_found(ConfigurationProvider provider, string key)
     {
         ConfigurationProviderExtensions.HasKey(provider, key).Should().BeFalse();
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Values_can_be_retrieved(ConfigurationProvider provider, string key, string value)
     {
         provider.Set(key, value);
@@ -58,7 +59,7 @@ public class ConfigurationProviderExtensionsTests
         ConfigurationProviderExtensions.Get(provider, key).Should().Be(value);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Values_of_nested_keys_can_be_retrieved(ConfigurationProvider provider, string firstKey, string secondKey, string value)
     {
         provider.Set($"{firstKey}{ConfigurationPath.KeyDelimiter}{secondKey}", value);
@@ -66,7 +67,7 @@ public class ConfigurationProviderExtensionsTests
         ConfigurationProviderExtensions.Get(provider, firstKey, secondKey).Should().Be(value);
     }
 
-    [Theory, CustomAutoData]
+    [Theory, Compose<ComponoTestProfile>]
     public void Non_added_keys_return_null(ConfigurationProvider provider, string key)
     {
         ConfigurationProviderExtensions.Get(provider, key).Should().BeNull();
