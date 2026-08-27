@@ -1,7 +1,4 @@
-using System.IO;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Amazon.Runtime;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
@@ -16,7 +13,6 @@ public sealed class ComponoTestProfile : ICompositionProfile
 {
     public void Configure(CompositionBuilder builder)
     {
-        builder.UseBogus();
         builder.UseGeneratedTestDoubles();
 
         builder.Register<Amazon.RegionEndpoint>(_ => Amazon.RegionEndpoint.USEast1);
