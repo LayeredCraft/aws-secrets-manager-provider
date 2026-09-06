@@ -1,0 +1,21 @@
+{
+  "assertion_results": [
+    {
+      "text": "Mentions binary secrets (SecretBinary-only, no SecretString) are silently skipped as a candidate cause",
+      "passed": false,
+      "evidence": "SecretBinary/binary secrets are never mentioned anywhere across all 7 listed candidate causes."
+    },
+    {
+      "text": "Mentions SecretFilter or AcceptedSecretArns scoping as another candidate cause",
+      "passed": true,
+      "evidence": "Cause #2 explicitly covers 'Secret name/prefix filter doesn't match' with SecretFilter and AcceptedSecretArns examples."
+    },
+    {
+      "text": "Does not claim the provider would throw an exception in either of these cases",
+      "passed": true,
+      "evidence": "Frames both filter exclusion and IAM/KMS suppression as silent, not throwing."
+    }
+  ],
+  "summary": { "passed": 2, "failed": 1, "total": 3, "pass_rate": 0.667 },
+  "notes": "This is the single most diagnostic, most package-specific fact for this exact symptom (silent, no-exception, secret missing) and the generic-knowledge answer misses it entirely despite covering 7 other plausible-sounding causes (IAM/KMS suppression, filter mismatch, no polling, key-mapping confusion, source ordering, wrong region, propagation delay) — strong evidence of the skill's value for this specific eval case."
+}

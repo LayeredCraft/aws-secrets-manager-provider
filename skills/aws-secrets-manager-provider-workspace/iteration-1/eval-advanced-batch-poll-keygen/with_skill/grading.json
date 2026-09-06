@@ -1,0 +1,25 @@
+{
+  "assertion_results": [
+    {
+      "text": "Sets UseBatchFetch to true and mentions the 20-secret batch chunk limit",
+      "passed": true,
+      "evidence": "Sets `options.UseBatchFetch = true` and states 'chunks of ≤20 instead of one GetSecretValue call per secret'."
+    },
+    {
+      "text": "Mentions the secretsmanager:BatchGetSecretValue IAM permission is required",
+      "passed": true,
+      "evidence": "States 'this requires the secretsmanager:BatchGetSecretValue IAM permission'."
+    },
+    {
+      "text": "Sets PollingInterval to enable background reload rather than suggesting a manual restart",
+      "passed": true,
+      "evidence": "Sets `options.PollingInterval = TimeSpan.FromMinutes(5)` and explains reload semantics (diff-based, poll failures logged not thrown)."
+    },
+    {
+      "text": "Sets KeyGenerator to uppercase the key rather than inventing an unrelated casing option",
+      "passed": true,
+      "evidence": "Sets `options.KeyGenerator = (secret, key) => key.ToUpperInvariant();` and correctly notes it rewrites the full flattened path, not just the top-level name."
+    }
+  ],
+  "summary": { "passed": 4, "failed": 0, "total": 4, "pass_rate": 1.0 }
+}

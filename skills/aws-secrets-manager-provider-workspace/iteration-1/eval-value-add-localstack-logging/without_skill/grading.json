@@ -1,0 +1,21 @@
+{
+  "assertion_results": [
+    {
+      "text": "Uses ConfigureSecretsManagerConfig with ServiceURL (or ServiceUrl) pointed at a local endpoint for LocalStack, not CreateClient bypassing it unnecessarily",
+      "passed": false,
+      "evidence": "Never uses ConfigureSecretsManagerConfig or CreateClient at all. Instead invents non-existent overloads `AddSecretsManager(secretsManagerClient, options => {...})` and `AddSecretsManager(secretsManagerClient, loggerFactory, options => {...})` that accept a pre-built IAmazonSecretsManager client directly — no such overload exists on SecretsManagerExtensions."
+    },
+    {
+      "text": "Explicitly passes an ILoggerFactory or ILogger to an AddSecretsManager overload rather than claiming automatic DI-based logger resolution",
+      "passed": true,
+      "evidence": "Explicitly builds and passes a standalone `loggerFactory` (via the fabricated overload) rather than claiming DI auto-resolution; makes no false claim about automatic logger resolution."
+    },
+    {
+      "text": "Does not claim a dedicated first-class LocalStack integration package exists",
+      "passed": true,
+      "evidence": "No claim of a dedicated LocalStack package; frames it as manually constructing the AWS client."
+    }
+  ],
+  "summary": { "passed": 2, "failed": 1, "total": 3, "pass_rate": 0.667 },
+  "notes": "The fabricated client-injection overload is a significant, actionable hallucination — a developer following this answer verbatim gets a compile error, since AddSecretsManager has no overload accepting an IAmazonSecretsManager instance. This is exactly the class of mistake the skill's ConfigureSecretsManagerConfig/CreateClient guidance is designed to prevent."
+}

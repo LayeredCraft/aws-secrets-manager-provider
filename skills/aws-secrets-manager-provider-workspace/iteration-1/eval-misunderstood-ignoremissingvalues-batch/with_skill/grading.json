@@ -1,0 +1,20 @@
+{
+  "assertion_results": [
+    {
+      "text": "Correctly explains IgnoreMissingValues only suppresses all-missing-secret batches, not all error types",
+      "passed": true,
+      "evidence": "'IgnoreMissingValues only suppresses errors in batch mode when every error returned for a given batch is a missing-secret error.'"
+    },
+    {
+      "text": "Explicitly names DecryptionFailureException as a non-missing-secret error type that still throws",
+      "passed": true,
+      "evidence": "Names DecryptionFailureException explicitly and explains it comes from a KMS decrypt failure, unrelated to IgnoreMissingValues."
+    },
+    {
+      "text": "Does not claim this is a bug or that IgnoreMissingValues should be expected to suppress it",
+      "passed": true,
+      "evidence": "Opens with 'this is expected behavior... not a bug' and reiterates the option's scope is intentionally narrow."
+    }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 }
+}

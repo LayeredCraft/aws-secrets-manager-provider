@@ -1,0 +1,20 @@
+{
+  "assertion_results": [
+    {
+      "text": "Uses ConfigureSecretsManagerConfig with ServiceURL (or ServiceUrl) pointed at a local endpoint for LocalStack, not CreateClient bypassing it unnecessarily",
+      "passed": true,
+      "evidence": "Sets `options.ConfigureSecretsManagerConfig = config => { config.ServiceURL = \"http://localhost:4566\"; ... }` and explicitly advises against combining this with `CreateClient`."
+    },
+    {
+      "text": "Explicitly passes an ILoggerFactory or ILogger to an AddSecretsManager overload rather than claiming automatic DI-based logger resolution",
+      "passed": true,
+      "evidence": "Passes `loggerFactory` to `AddSecretsManager(loggerFactory, ...)` and explicitly states there is no automatic DI-based logger resolution."
+    },
+    {
+      "text": "Does not claim a dedicated first-class LocalStack integration package exists",
+      "passed": true,
+      "evidence": "Frames this as using an existing extensibility hook (ConfigureSecretsManagerConfig), pointing to the 'Platform Support' docs page rather than any dedicated LocalStack package."
+    }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 }
+}

@@ -1,0 +1,21 @@
+{
+  "assertion_results": [
+    {
+      "text": "Correctly describes ':'-delimited flattening producing the key MyDb:ConnectionStrings:Primary",
+      "passed": true,
+      "evidence": "States `MyDb:ConnectionStrings:Primary = Server=...;Database=...;` explicitly."
+    },
+    {
+      "text": "States that configuration key lookups are case-insensitive",
+      "passed": true,
+      "evidence": "'configuration keys in IConfiguration are case-insensitive' with matching examples and correct StringComparer rationale."
+    },
+    {
+      "text": "Does not claim Newtonsoft/JSON.NET or a different delimiter is used",
+      "passed": true,
+      "evidence": "No mention of Newtonsoft/JSON.NET; uses ':' consistently."
+    }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 },
+  "notes": "This case is answered correctly by generic knowledge alone, since ':'-delimited flattening and case-insensitivity are standard Microsoft.Extensions.Configuration behavior, not package-specific. All 3 assertions pass in both conditions — flagged in feedback.json as a low-discriminating-power eval case."
+}
