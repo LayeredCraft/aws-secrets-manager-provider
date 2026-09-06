@@ -60,7 +60,7 @@ MyDb:ConnectionStrings:Replicas:0     = "Server=replica1"
 MyDb:ConnectionStrings:Replicas:1     = "Server=replica2"
 ```
 
-A JSON `null` value produces a configuration entry that **exists with a `null` value** (`configuration.GetSection(...).Exists()` returns `true`), rather than being omitted or throwing.
+A JSON `null` value produces a configuration entry with a `null` value in the underlying data, rather than being omitted or throwing. Note this is **not** detectable via `IConfigurationSection.Exists()` — `Exists()` returns `false` for a key whose value is `null` and has no children, the same as a genuinely missing key — nor via a plain indexer lookup, since `configuration["key"]` also returns `null` for both a null-valued entry and an absent one. If you need to distinguish "explicitly null" from "not present," you'd need to inspect the provider's raw data directly rather than relying on `IConfiguration`'s usual presence checks.
 
 ### Detecting JSON vs. plain string
 

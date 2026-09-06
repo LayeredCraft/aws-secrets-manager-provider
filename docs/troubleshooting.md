@@ -7,7 +7,7 @@ Check, in order:
 1. **Is it a binary secret?** Secrets stored with only `SecretBinary` (no `SecretString`) are silently skipped — no key is created, no error is raised. This library doesn't decode binary secret values. If you need a binary payload, store it as a base64 string inside a `SecretString` instead.
 2. **Is `SecretFilter` excluding it?** A custom `SecretFilter` predicate that returns `false` for this secret will silently exclude it (again, no error).
 3. **Is it outside `AcceptedSecretArns`?** If `AcceptedSecretArns` is non-empty, only those exact entries are fetched — `ListSecrets`/`ListSecretsFilters` are not consulted at all in that mode.
-4. **Does your IAM policy actually grant access to it?** A missing-permission failure only surfaces as an exception if `IgnoreMissingValues` is `false`; if it's `true`, a permission or missing-secret failure is swallowed silently for that one secret. Temporarily set `IgnoreMissingValues = false` to confirm.
+4. **Does your IAM policy actually grant access to it?** `IgnoreMissingValues` only suppresses a *missing-secret* failure (`ResourceNotFoundException`) — it does **not** swallow an IAM/authorization failure (e.g. `AccessDeniedException`), which is always raised as an exception regardless of `IgnoreMissingValues`. If a secret is silently absent from configuration, a permissions problem on it is not the explanation — check the other candidates in this list first, and confirm access separately (e.g. via the AWS CLI) rather than by toggling `IgnoreMissingValues`.
 
 ## `MissingSecretValueException`
 

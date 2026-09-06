@@ -43,14 +43,15 @@ Behavior:
 
 ### Forcing a reload manually
 
-`SecretsManagerConfigurationProvider.ForceReloadAsync(CancellationToken)` triggers the same fetch-and-diff-and-reload logic on demand, outside the polling interval:
+`SecretsManagerConfigurationProvider.ForceReloadAsync(CancellationToken)` triggers the same fetch-and-diff-and-reload logic on demand, outside the polling interval. Get the provider that's actually attached to your built configuration — via `IConfigurationRoot.Providers` — rather than calling `source.Build(...)` again, which constructs a brand-new, detached provider instance whose reload has no effect on your application's `IConfiguration` or its registered change-token callbacks:
 
 ```csharp
-var source = configBuilder.Sources
-    .OfType<SecretsManagerConfigurationSourceWithLogger>()
+var configuration = configBuilder.Build();
+
+var provider = ((IConfigurationRoot)configuration).Providers
+    .OfType<SecretsManagerConfigurationProvider>()
     .First();
 
-var provider = (SecretsManagerConfigurationProvider)source.Build(configBuilder);
 await provider.ForceReloadAsync(CancellationToken.None);
 ```
 
