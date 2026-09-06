@@ -143,4 +143,4 @@ public class MissingSecretValueException : Exception
 }
 ```
 
-Thrown from both single-fetch and batch-fetch paths when a secret can't be retrieved and `IgnoreMissingValues` is `false` (or, in batch mode, when other non-missing errors accompany it — see [Troubleshooting & FAQ](troubleshooting.md)).
+Thrown **directly** by the single-fetch path when a secret can't be retrieved and `IgnoreMissingValues` is `false`. In batch mode (`UseBatchFetch = true`), a per-secret missing-value failure is also modeled as a `MissingSecretValueException`, but it is not thrown directly — it's collected alongside any other per-secret errors in that batch and thrown wrapped inside an `AggregateException`, unless `IgnoreMissingValues` is `true` **and** every error in the batch is a missing-secret error. A caller using `UseBatchFetch` should catch `AggregateException` and inspect `AggregateException.InnerExceptions` for `MissingSecretValueException` entries, rather than catching `MissingSecretValueException` directly — see [Troubleshooting & FAQ](troubleshooting.md).
