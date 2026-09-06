@@ -29,6 +29,9 @@ dotnet add package AWSSecretsManager.Provider
 ```
 
 ```csharp
+using AWSSecretsManager.Provider;
+using Microsoft.Extensions.Configuration;
+
 var builder = new ConfigurationBuilder();
 builder.AddSecretsManager();
 
