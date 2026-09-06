@@ -21,7 +21,7 @@ Things to know:
 - Requires the `secretsmanager:BatchGetSecretValue` IAM permission in addition to whatever permission fetches the secret list.
 - When `UseBatchFetch` is `true`, `ConfigureSecretValueRequest` is **not** used — only `ConfigureBatchSecretValueRequest` is called.
 - AWS returns full ARNs (with a random suffix, e.g. `-AbCdEf`) in the batch response even if you requested by short name or partial ARN via `AcceptedSecretArns`. The provider matches responses back to requests using exact ARN, ARN-suffix, or name matching — you don't need to do anything special to make partial ARNs or names work with batch fetch.
-- If any error occurs for any secret in a batch, the provider raises an `AggregateException` wrapping one exception per failed secret — **unless** `IgnoreMissingValues` is `true` **and** every failure in the batch is a missing-secret error. A single non-missing error (e.g. a decryption failure) in an otherwise-ignorable batch still throws. See [Troubleshooting & FAQ](troubleshooting.md).
+- If AWS reports per-secret errors inside a batch response, the provider raises an `AggregateException` wrapping one exception per failed secret — **unless** `IgnoreMissingValues` is `true` **and** every failure in the batch is a missing-secret error. A single non-missing error (e.g. a decryption failure) in an otherwise-ignorable batch still throws. This only covers errors AWS reports *inside* the batch response — a request-level failure (an authorization error, throttling, or a service error from `ListSecretsAsync` or `BatchGetSecretValueAsync` itself) propagates directly instead, uncaught by this handling. See [Troubleshooting & FAQ](troubleshooting.md).
 
 ## Polling and reload
 
@@ -37,7 +37,7 @@ builder.AddSecretsManager(loggerFactory, configurator: options =>
 Behavior:
 
 - The provider compares the newly-fetched key/value set against what it currently holds. It only calls `IConfigurationProvider.OnReload()` (firing `IChangeToken` callbacks registered via `configuration.GetReloadToken().RegisterChangeCallback(...)`) when something actually changed — an identical re-fetch is a silent no-op, not a spurious reload notification.
-- If a poll fails (network blip, throttling, transient AWS error), the failure is logged as a warning and the polling loop keeps running on the same interval — it does not stop polling after one failure.
+- If a poll fails with most exception types (network blip, throttling, transient AWS error), the failure is logged as a warning and the polling loop keeps running on the same interval. **This does not hold for `OperationCanceledException`**: any exception of that type unconditionally breaks the polling loop *silently* (no warning logged) — not only when it's caused by genuine provider shutdown, but also if it originates elsewhere (a custom `IAmazonSecretsManager` implementation, an operation-level timeout, a callback that throws it). If polling appears to have stopped with nothing in the logs, this is the likely cause.
 - Polling only starts if `PollingInterval` has a value; it's opt-in.
 - Disposing the `SecretsManagerConfigurationProvider` (or letting your host tear down its configuration) cancels the polling loop cleanly.
 

@@ -18,7 +18,7 @@ With `UseBatchFetch = true`, whether this exception arrives directly or wrapped 
 - If AWS returns the missing-secret failure as a per-secret error inside the batch response (the normal case), it's wrapped inside the `AggregateException` described above — catch `AggregateException` and check `ex.InnerExceptions.OfType<MissingSecretValueException>()`.
 - If the `BatchGetSecretValueAsync` call itself throws `ResourceNotFoundException` as a request-level failure (rather than returning it in the response body), the provider rethrows `MissingSecretValueException` **directly** — and this path is **not** gated by `IgnoreMissingValues` at all, unlike the single-fetch path.
 
-To handle batch-mode failures reliably, catch both `MissingSecretValueException` directly and `AggregateException` (inspecting `InnerExceptions`).
+Catch both `MissingSecretValueException` directly and `AggregateException` (inspecting `InnerExceptions`) to handle *missing-secret* failures specifically. This is not exhaustive for every batch-mode failure — an authorization error, throttling, or a service error from `ListSecretsAsync`/`BatchGetSecretValueAsync` itself is only caught if it matches `ResourceNotFoundException`; any other AWS exception type propagates directly, uncaught by either shape above.
 
 ## `AggregateException` from batch fetch
 
@@ -32,7 +32,7 @@ The provider only attempts JSON parsing if the secret value's first non-whitespa
 
 - Confirm `PollingInterval` is actually set (it's `null`/disabled by default).
 - The provider only fires a reload notification when the fetched key/value set actually differs from what it currently holds — if the secret's value is unchanged between polls, that's correctly treated as a no-op, not a missed reload.
-- Poll failures are logged as warnings and do not stop the polling loop — check logs (you need a logging overload enabled; see [Getting Started](getting-started.md)) for recurring warnings if reload seems to have stopped.
+- Most poll failures are logged as warnings and do not stop the polling loop — check logs (you need a logging overload enabled; see [Getting Started](getting-started.md)) for recurring warnings if reload seems to have stopped. One exception: an `OperationCanceledException` (from any source, not only real shutdown) breaks the polling loop permanently and **silently** — no warning is logged for it. If polling has stopped with nothing in the logs at all, this is the likely cause, not a suppressed failure.
 
 ## Credential / region resolution failures
 

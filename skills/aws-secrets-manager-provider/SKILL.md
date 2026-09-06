@@ -81,8 +81,8 @@ Default (no `credentials`/`region` passed): resolved via the standard AWS SDK fo
 ## Batch fetch & polling (condensed — full depth in the docs site)
 
 - `UseBatchFetch=true`: chunks of ≤20 secrets per `BatchGetSecretValue` call; AWS returns full randomized-suffix ARNs even for short-name/partial-ARN requests, but the provider matches responses back correctly on its own — no special handling needed by the caller.
-- **`IgnoreMissingValues` in batch mode only suppresses errors when EVERY error in that batch is a missing-secret error.** A single non-missing error (e.g. decryption failure) alongside missing-secret errors still throws an `AggregateException`. Do not tell a user `IgnoreMissingValues=true` makes batch fetch fully fault-tolerant.
-- `PollingInterval` set → background loop; reload (`IChangeToken`/`OnReload`) only fires when the fetched key set actually differs from before; poll failures are logged as warnings and do not stop the loop.
+- **`IgnoreMissingValues` in batch mode only suppresses errors when EVERY error in that batch is a missing-secret error.** A single non-missing error (e.g. decryption failure) alongside missing-secret errors still throws an `AggregateException`. Do not tell a user `IgnoreMissingValues=true` makes batch fetch fully fault-tolerant — and note this whole mechanism only covers errors AWS reports *inside* the batch response; a request-level failure (auth error, throttling, service error) from `ListSecretsAsync`/`BatchGetSecretValueAsync` itself propagates directly and is caught by neither `MissingSecretValueException` nor `AggregateException` handling.
+- `PollingInterval` set → background loop; reload (`IChangeToken`/`OnReload`) only fires when the fetched key set actually differs from before; most poll failures are logged as warnings and do not stop the loop — **except** `OperationCanceledException`, which always breaks the loop silently (no warning), even when it's not caused by actual shutdown. Don't claim polling survives every failure type.
 - `ForceReloadAsync(CancellationToken)` on `SecretsManagerConfigurationProvider` triggers the same fetch-diff-reload logic on demand.
 
 ## Common mistakes to avoid
