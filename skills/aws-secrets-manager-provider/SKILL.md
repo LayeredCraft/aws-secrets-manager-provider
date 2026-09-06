@@ -24,6 +24,8 @@ Supported: `netstandard2.0` (→ .NET Framework 4.6.2+, .NET Core 2.0+), `net8.0
 There are exactly three `AddSecretsManager` extension methods on `IConfigurationBuilder`, all sharing the same optional `credentials`/`region`/`configurator` parameters:
 
 ```csharp
+using AWSSecretsManager.Provider;
+
 // No logging
 builder.AddSecretsManager();
 builder.AddSecretsManager(credentials, region);
@@ -41,6 +43,8 @@ builder.AddSecretsManager(loggerFactory, credentials, region, configurator);
 Typical ASP.NET Core minimal-hosting pattern:
 
 ```csharp
+using AWSSecretsManager.Provider;
+
 var builder = WebApplication.CreateBuilder(args);
 using var loggerFactory = LoggerFactory.Create(lb => lb.AddConsole());
 builder.Configuration.AddSecretsManager(loggerFactory,

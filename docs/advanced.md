@@ -5,6 +5,8 @@
 By default the provider calls `GetSecretValue` once per secret. Setting `UseBatchFetch = true` switches to `BatchGetSecretValue`, which retrieves up to **20 secrets per request**:
 
 ```csharp
+using AWSSecretsManager.Provider;
+
 builder.AddSecretsManager(configurator: options =>
 {
     options.UseBatchFetch = true;
@@ -28,6 +30,8 @@ Things to know:
 Set `PollingInterval` to have the provider periodically re-fetch and diff its secrets:
 
 ```csharp
+using AWSSecretsManager.Provider;
+
 builder.AddSecretsManager(loggerFactory, configurator: options =>
 {
     options.PollingInterval = TimeSpan.FromMinutes(5);

@@ -8,6 +8,7 @@ To use a specific credential source explicitly, pass it in:
 
 ```csharp
 using Amazon.Runtime.CredentialManagement;
+using AWSSecretsManager.Provider;
 
 var chain = new CredentialProfileStoreChain();
 if (chain.TryGetProfile("MyProfile", out var profile))

@@ -5,6 +5,8 @@
 Pass a `configurator` delegate to any `AddSecretsManager` overload to set these:
 
 ```csharp
+using AWSSecretsManager.Provider;
+
 builder.AddSecretsManager(configurator: options =>
 {
     options.PollingInterval = TimeSpan.FromMinutes(5);
