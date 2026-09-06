@@ -17,6 +17,9 @@
 The provider has no LocalStack-specific code path, but its extensibility hooks are sufficient to point it at a local AWS Secrets Manager emulator such as [LocalStack](https://www.localstack.cloud/) for local development or integration testing:
 
 ```csharp
+using Amazon.Runtime;
+using AWSSecretsManager.Provider;
+
 builder.AddSecretsManager(
     credentials: new BasicAWSCredentials("test", "test"), // LocalStack accepts any non-empty values
     configurator: options =>

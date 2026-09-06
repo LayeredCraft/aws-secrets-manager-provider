@@ -47,6 +47,9 @@ Behavior:
 `SecretsManagerConfigurationProvider.ForceReloadAsync(CancellationToken)` triggers the same fetch-and-diff-and-reload logic on demand, outside the polling interval. Get the provider that's actually attached to your built configuration — via `IConfigurationRoot.Providers` — rather than calling `source.Build(...)` again, which constructs a brand-new, detached provider instance whose reload has no effect on your application's `IConfiguration` or its registered change-token callbacks:
 
 ```csharp
+using AWSSecretsManager.Provider.Internal;
+using Microsoft.Extensions.Configuration;
+
 var configuration = configBuilder.Build();
 
 var provider = ((IConfigurationRoot)configuration).Providers
@@ -63,6 +66,10 @@ This is useful for tests, admin-triggered refresh endpoints, or event-driven rel
 If you need full control over how the `IAmazonSecretsManager` client is built — a custom `HttpClient`, a non-standard credential provider, request signing customization — bypass the provider's own client construction entirely:
 
 ```csharp
+using Amazon;
+using Amazon.SecretsManager;
+using AWSSecretsManager.Provider;
+
 builder.AddSecretsManager(configurator: options =>
 {
     options.CreateClient = () => new AmazonSecretsManagerClient(RegionEndpoint.EUWest1);
