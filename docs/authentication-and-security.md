@@ -21,12 +21,14 @@ This is the pattern used by the `Sample3` sample — resolving a named profile e
 
 ## Region resolution
 
-Region is resolved from, in order:
+By default (no `ConfigureSecretsManagerConfig`/`CreateClient` set): the `region` parameter passed to `AddSecretsManager`, if not `null`, is assigned to the client config; otherwise the AWS SDK client itself falls back to its usual resolution (environment variable, shared config file, or instance metadata).
 
-1. The `region` parameter passed to `AddSecretsManager`, if not `null`.
-2. Otherwise, whatever the AWS SDK client itself falls back to (environment variable, shared config file, or instance metadata) when no explicit `RegionEndpoint` is set on the client config.
+This is **not** the final word if you also use the other extensibility hooks, though:
 
-There is no separate region-resolution logic in this library beyond passing the value through to `AmazonSecretsManagerConfig.RegionEndpoint`.
+- `ConfigureSecretsManagerConfig` runs *after* `region` is assigned to the client config, so its callback can overwrite `RegionEndpoint` — if you set both `region` and a `ConfigureSecretsManagerConfig` callback that also touches region, the callback wins.
+- `CreateClient` bypasses `region` (and `ConfigureSecretsManagerConfig`) entirely — you own region resolution completely in that case.
+
+There is no separate region-resolution logic in this library beyond passing values through to `AmazonSecretsManagerConfig.RegionEndpoint`, but which value ends up in effect depends on which of these hooks you combine.
 
 ## Required IAM permissions
 

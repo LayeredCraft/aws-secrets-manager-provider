@@ -23,7 +23,7 @@ builder.AddSecretsManager(configurator: options =>
 | `CreateClient` | `Func<IAmazonSecretsManager>?` | `null` | Full override for client construction. When set, this bypasses region, credentials, and `ConfigureSecretsManagerConfig` entirely — you own the client completely. |
 | `PollingInterval` | `TimeSpan?` | `null` | Enables a background reload loop on this interval. `null` (the default) means the provider loads once and never polls. See [Advanced Usage](advanced.md). |
 | `UseBatchFetch` | `bool` | `false` | Use `BatchGetSecretValue` (up to 20 secrets per request) instead of one `GetSecretValue` call per secret. Requires the `secretsmanager:BatchGetSecretValue` IAM permission. See [Advanced Usage](advanced.md). |
-| `IgnoreMissingValues` | `bool` | `false` | Suppress errors for secrets that don't exist instead of throwing `MissingSecretValueException`. See [Advanced Usage](advanced.md) for the batch-mode nuance. |
+| `IgnoreMissingValues` | `bool` | `false` | Suppress a missing-secret error instead of throwing `MissingSecretValueException` — but not unconditionally: in batch mode, one request-level missing-secret path always throws regardless of this option. See [Advanced Usage](advanced.md) for the full batch-mode nuance. |
 
 ## How a secret value becomes configuration keys
 
