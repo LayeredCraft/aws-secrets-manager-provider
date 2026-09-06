@@ -14,101 +14,48 @@ It provides a configuration provider for [Microsoft.Extensions.Configuration](ht
 
 ## 🚀 What's New in This Fork
 
-- ✅ Targeted to .NET 8 and .NET 9
+- ✅ Targeted to .NET 8, 9, 10, and 11 (plus `netstandard2.0`)
 - ✅ Converted to use `System.Text.Json` only
 - ✅ Refactored structure for better modern SDK usage
-- ✅ **NEW**: Comprehensive logging support with `ILogger` integration
+- ✅ Comprehensive logging, batch fetch, and polling/reload support
 - ✅ Published as a new NuGet package: [`AWSSecretsManager.Provider`](https://www.nuget.org/packages/AWSSecretsManager.Provider)
 
 ---
 
-## 🔧 Usage
+## 🔧 Quick Start
 
-### ASP.NET Core Example
+```bash
+dotnet add package AWSSecretsManager.Provider
+```
 
 ```csharp
-public class Program
-{
-    public static void Main(string[] args)
-    {
-        CreateHostBuilder(args).Build().Run();
-    }
+using AWSSecretsManager.Provider;
+using Microsoft.Extensions.Configuration;
 
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
-        Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((context, config) =>
-            {
-                config.AddSecretsManager(); // 👈 AWS Secrets Manager integration
-            })
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                webBuilder.UseStartup<Startup>();
-            });
-}
+var builder = new ConfigurationBuilder();
+builder.AddSecretsManager();
+
+var config = builder.Build();
+Console.WriteLine("Secret: " + config["MySecret"]);
 ```
 
-### Console App Example
+Your application must have AWS credentials available through the default AWS SDK mechanisms. See [Authentication & Security](https://layeredcraft.github.io/aws-secrets-manager-provider/authentication-and-security/) for details.
 
-```csharp
-static void Main(string[] args)
-{
-    var builder = new ConfigurationBuilder();
-    builder.AddSecretsManager();
+## 📖 Documentation
 
-    var config = builder.Build();
-    Console.WriteLine("Secret: " + config["MySecret"]);
-}
+The full documentation site covers installation, every configuration option, secret-to-key mapping rules, batch fetch and polling, authentication/IAM, LocalStack, troubleshooting, and the complete API reference:
+
+👉 **[layeredcraft.github.io/aws-secrets-manager-provider](https://layeredcraft.github.io/aws-secrets-manager-provider/)**
+
+## 🤖 AI Coding Agent Skill
+
+This repo ships a downloadable [Agent Skill](https://agentskills.io/) that teaches AI coding agents to use this package correctly:
+
+```bash
+npx skills add LayeredCraft/aws-secrets-manager-provider
 ```
 
-Your application must have AWS credentials available through the default AWS SDK mechanisms. Learn more here:  
-👉 [AWS SDK Credential Config](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/net-dg-config-creds.html)
-
-### 📋 Logging Support
-
-The provider includes comprehensive logging support for better observability:
-
-```csharp
-// Using ILoggerFactory (recommended)
-using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-builder.Configuration.AddSecretsManager(
-    loggerFactory,
-    configurator: options => options.PollingInterval = TimeSpan.FromMinutes(5));
-
-// Using explicit ILogger
-var logger = loggerFactory.CreateLogger<SecretsManagerConfigurationProvider>();
-builder.Configuration.AddSecretsManager(
-    logger,
-    configurator: options => options.PollingInterval = TimeSpan.FromMinutes(5));
-```
-
-**Log Levels:**
-- **Information**: Key operations (loading, reloading, polling status)
-- **Debug**: Batch processing details and secret counts  
-- **Trace**: Individual secret processing and change detection
-- **Warning**: Polling errors and missing secrets (when ignored)
-- **Error**: Failed operations with full context
-
-**Example Log Output:**
-```
-[Information] Loading secrets from AWS Secrets Manager
-[Debug] Fetching 15 secrets in 1 batches
-[Information] Successfully loaded 47 configuration keys in 1,234ms
-[Information] Starting secret polling with interval 00:05:00
-```
-
----
-
-## 🔒 Configuration Options
-
-This provider supports several customization options, including:
-
-- **Credentials**: Pass your own credentials if needed.
-- **Region**: Customize the AWS region.
-- **Filtering**: Control which secrets are loaded via filters or explicit allow lists.
-- **Key generation**: Customize how configuration keys are named.
-- **Version stage**: Set version stages for secrets.
-- **Logging**: Full logging support with `ILogger` integration for observability.
-- **LocalStack support**: Override `ServiceUrl` for local testing.
+See [docs/agent-skill.md](https://layeredcraft.github.io/aws-secrets-manager-provider/agent-skill/) or the skill source at [`skills/aws-secrets-manager-provider/`](./skills/aws-secrets-manager-provider/).
 
 ## 📚 Samples
 
@@ -144,6 +91,13 @@ This repo is built with the standard .NET SDK:
 ```bash
 dotnet build
 dotnet test
+```
+
+To preview the documentation site locally:
+
+```bash
+uv sync
+uv run mkdocs serve
 ```
 
 ---

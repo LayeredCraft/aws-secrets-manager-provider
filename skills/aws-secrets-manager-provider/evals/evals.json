@@ -1,0 +1,78 @@
+{
+  "skill_name": "aws-secrets-manager-provider",
+  "evals": [
+    {
+      "id": 1,
+      "category": "normal-usage",
+      "prompt": "I'm building an ASP.NET Core minimal API and want to pull secrets from AWS Secrets Manager into IConfiguration named \"prod/myapp/db\". How do I wire this up?",
+      "expected_output": "Adds the AWSSecretsManager.Provider NuGet package, calls builder.Configuration.AddSecretsManager(...) on the WebApplicationBuilder (optionally with a logger/loggerFactory overload), and explains that with no AcceptedSecretArns/filters set it will list and fetch every accessible secret rather than only the named one, suggesting AcceptedSecretArns or SecretFilter to scope it to that secret.",
+      "files": [],
+      "assertions": [
+        "Uses a real AddSecretsManager overload signature (no logger, ILogger<SecretsManagerConfigurationProvider>, or ILoggerFactory)",
+        "Does not claim a logger is automatically resolved from DI without an explicit overload",
+        "Mentions scoping to the specific secret via AcceptedSecretArns or SecretFilter rather than leaving it fetching everything"
+      ]
+    },
+    {
+      "id": 2,
+      "category": "advanced",
+      "prompt": "I have about 40 secrets I need loaded efficiently, want them refreshed every 5 minutes without restarting the app, and want all the resulting configuration keys upper-cased. What options do I need?",
+      "expected_output": "Sets UseBatchFetch=true (and notes the secretsmanager:BatchGetSecretValue IAM permission requirement and the 20-secret-per-request chunking), sets PollingInterval=TimeSpan.FromMinutes(5) for background reload, and sets KeyGenerator=(entry,key)=>key.ToUpper() for uppercasing.",
+      "files": [],
+      "assertions": [
+        "Sets UseBatchFetch to true and mentions the 20-secret batch chunk limit",
+        "Mentions the secretsmanager:BatchGetSecretValue IAM permission is required",
+        "Sets PollingInterval to enable background reload rather than suggesting a manual restart",
+        "Sets KeyGenerator to uppercase the key rather than inventing an unrelated casing option"
+      ]
+    },
+    {
+      "id": 3,
+      "category": "edge-case",
+      "prompt": "One of my secrets is a JSON blob like {\"ConnectionStrings\":{\"Primary\":\"...\"}} stored under the name MyDb. How do I read the Primary connection string from IConfiguration, and does the casing of the key matter?",
+      "expected_output": "Explains the secret is recursively flattened using ':'-delimited ConfigurationPath keys, so the value is readable at configuration[\"MyDb:ConnectionStrings:Primary\"], and that key lookups are case-insensitive so casing does not matter.",
+      "files": [],
+      "assertions": [
+        "Correctly describes ':'-delimited flattening producing the key MyDb:ConnectionStrings:Primary",
+        "States that configuration key lookups are case-insensitive",
+        "Does not claim Newtonsoft/JSON.NET or a different delimiter is used"
+      ]
+    },
+    {
+      "id": 4,
+      "category": "commonly-misunderstood",
+      "prompt": "I set IgnoreMissingValues=true and UseBatchFetch=true, but I'm still getting an AggregateException with a DecryptionFailureException inside it. Isn't IgnoreMissingValues supposed to prevent errors like this?",
+      "expected_output": "Explains that IgnoreMissingValues only suppresses errors when every error in a batch is a missing-secret (ResourceNotFoundException) error; a DecryptionFailureException or other non-missing error type in the same batch still throws an AggregateException regardless of IgnoreMissingValues, and suggests inspecting AggregateException.InnerExceptions to see which secrets failed and why (likely a KMS key permission or state issue for that decryption failure specifically).",
+      "files": [],
+      "assertions": [
+        "Correctly explains IgnoreMissingValues only suppresses all-missing-secret batches, not all error types",
+        "Explicitly names DecryptionFailureException as a non-missing-secret error type that still throws",
+        "Does not claim this is a bug or that IgnoreMissingValues should be expected to suppress it"
+      ]
+    },
+    {
+      "id": 5,
+      "category": "skill-value-add",
+      "prompt": "For local development I want to point this at a LocalStack container instead of real AWS, and I'd also like some console log output showing when secrets load without setting up full dependency injection logging.",
+      "expected_output": "Uses ConfigureSecretsManagerConfig to set ServiceURL (and UseHttp) to the LocalStack endpoint with dummy/basic credentials, and separately passes an ILoggerFactory (e.g. LoggerFactory.Create(lb => lb.AddConsole())) directly to the AddSecretsManager loggerFactory overload rather than assuming DI wires it automatically.",
+      "files": [],
+      "assertions": [
+        "Uses ConfigureSecretsManagerConfig with ServiceURL (or ServiceUrl) pointed at a local endpoint for LocalStack, not CreateClient bypassing it unnecessarily",
+        "Explicitly passes an ILoggerFactory or ILogger to an AddSecretsManager overload rather than claiming automatic DI-based logger resolution",
+        "Does not claim a dedicated first-class LocalStack integration package exists"
+      ]
+    },
+    {
+      "id": 6,
+      "category": "edge-case",
+      "prompt": "A secret I created is just not appearing anywhere in my IConfiguration, no exception, nothing. What could cause this?",
+      "expected_output": "Lists binary secrets (SecretBinary set with no SecretString) as silently skipped with no error as one likely cause, and a SecretFilter or AcceptedSecretArns scope excluding it as another; does not claim the provider throws in either case.",
+      "files": [],
+      "assertions": [
+        "Mentions binary secrets (SecretBinary-only, no SecretString) are silently skipped as a candidate cause",
+        "Mentions SecretFilter or AcceptedSecretArns scoping as another candidate cause",
+        "Does not claim the provider would throw an exception in either of these cases"
+      ]
+    }
+  ]
+}

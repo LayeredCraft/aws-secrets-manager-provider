@@ -1,0 +1,32 @@
+name: Skill Validate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'skills/aws-secrets-manager-provider/**'
+      - '!skills/aws-secrets-manager-provider-workspace/**'
+      - 'scripts/validate_skill.py'
+      - '.github/workflows/skill-validate.yml'
+  pull_request:
+    paths:
+      - 'skills/aws-secrets-manager-provider/**'
+      - '!skills/aws-secrets-manager-provider-workspace/**'
+      - 'scripts/validate_skill.py'
+      - '.github/workflows/skill-validate.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Validate skill structure and evals schema
+        run: python3 scripts/validate_skill.py skills/aws-secrets-manager-provider
