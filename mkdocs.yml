@@ -1,0 +1,87 @@
+site_name: AWSSecretsManager.Provider
+site_description: An AWS Secrets Manager configuration provider for Microsoft.Extensions.Configuration
+site_url: https://layeredcraft.github.io/aws-secrets-manager-provider/
+repo_name: LayeredCraft/aws-secrets-manager-provider
+repo_url: https://github.com/LayeredCraft/aws-secrets-manager-provider
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  logo: assets/icon.png
+  favicon: assets/icon.png
+  features:
+    - content.code.copy
+    - content.code.select
+    - navigation.footer
+    - navigation.instant
+    - navigation.top
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+validation:
+  links:
+    anchors: warn
+
+exclude_docs: |
+  plans/
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Configuration & Secret Mapping: configuration.md
+  - Advanced Usage: advanced.md
+  - Authentication & Security: authentication-and-security.md
+  - Platform Support: platform-support.md
+  - Troubleshooting & FAQ: troubleshooting.md
+  - API Reference: api-reference.md
+  - AI Coding Agent Skill: agent-skill.md

@@ -1,0 +1,9 @@
+[project]
+name = "aws-secrets-manager-provider-docs"
+version = "0.0.0"
+description = "Documentation build dependencies for AWSSecretsManager.Provider."
+requires-python = ">=3.12"
+dependencies = [
+    "mkdocs-material>=9.0.0",
+    "mkdocs-minify-plugin>=0.7.0",
+]
