@@ -32,7 +32,8 @@ The provider only attempts JSON parsing if the secret value's first non-whitespa
 
 - Confirm `PollingInterval` is actually set (it's `null`/disabled by default).
 - The provider only fires a reload notification when the fetched key/value set actually differs from what it currently holds — if the secret's value is unchanged between polls, that's correctly treated as a no-op, not a missed reload.
-- Most poll failures are logged as warnings and do not stop the polling loop — check logs (you need a logging overload enabled; see [Getting Started](getting-started.md)) for recurring warnings if reload seems to have stopped. One exception: an `OperationCanceledException` (from any source, not only real shutdown) breaks the polling loop permanently and **silently** — no warning is logged for it. If polling has stopped with nothing in the logs at all, this is the likely cause, not a suppressed failure.
+- Most poll failures are logged as warnings and do not stop the polling loop — check logs (you need a logging overload enabled; see [Getting Started](getting-started.md)) for recurring warnings if reload seems to have stopped. Two exceptions, both silent (no warning logged): an `OperationCanceledException` (from any source, not only real shutdown) breaks the polling loop permanently; and an invalid `PollingInterval` (negative, other than `Timeout.InfiniteTimeSpan`) faults the polling task immediately via `ArgumentOutOfRangeException` before it ever reaches the per-reload error handling. If polling has stopped with nothing in the logs at all, one of these is the likely cause, not a suppressed failure.
+- Did you call `Load()` directly more than once? Each call starts a new polling task without stopping any previous one — the configuration pipeline calls `Load()` exactly once; use `ForceReloadAsync` for manual reloads instead (see [Advanced Usage](advanced.md#forcing-a-reload-manually)).
 
 ## Credential / region resolution failures
 

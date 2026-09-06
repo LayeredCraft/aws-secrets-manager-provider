@@ -74,9 +74,9 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
 }
 ```
 
-- `Load()` is called by the `Microsoft.Extensions.Configuration` pipeline; it synchronously blocks on the async fetch (required by the base `ConfigurationProvider` contract) and starts the background polling loop if `PollingInterval` is set.
-- `ForceReloadAsync` re-fetches and, if the resulting key set differs from what's currently loaded, fires a reload notification — usable independently of polling.
-- `Dispose()` cancels and awaits any running polling loop; safe to call whether or not polling was ever enabled.
+- `Load()` is called by the `Microsoft.Extensions.Configuration` pipeline; it synchronously blocks on the async fetch (required by the base `ConfigurationProvider` contract) and starts the background polling loop if `PollingInterval` is set. Calling it directly more than once starts an additional polling task each time, without stopping the previous one — see [Advanced Usage](advanced.md#polling-and-reload).
+- `ForceReloadAsync` re-fetches and, if the resulting key set differs from what's currently loaded, fires a reload notification — usable independently of polling, and does not start an additional polling loop.
+- `Dispose()` cancels and awaits the *most recently started* polling loop, swallowing `TaskCanceledException`; safe to call whether or not polling was ever enabled. It does not track or cancel earlier polling loops left over from calling `Load()` more than once, and rethrows any other exception the polling task faulted with (e.g. an `ArgumentOutOfRangeException` from an invalid `PollingInterval`).
 - Constructor throws `ArgumentNullException` if `client` or `options` is `null`.
 
 ## `AWSSecretsManager.Provider.Internal.SecretsManagerConfigurationSource`
