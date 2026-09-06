@@ -13,7 +13,12 @@ Check, in order:
 
 Thrown when a specific secret can't be retrieved (typically `ResourceNotFoundException` from AWS) and `IgnoreMissingValues` is `false`. It carries `SecretName` and `SecretArn` so you can identify which secret failed. Fixes: correct the ARN/name, verify the secret exists in the target account/region, verify IAM permissions, or set `IgnoreMissingValues = true` if a missing secret should be tolerated rather than fail startup.
 
-With `UseBatchFetch = true`, this exception is not thrown directly — it's wrapped inside the `AggregateException` described above. Catch `AggregateException` and check `ex.InnerExceptions.OfType<MissingSecretValueException>()` rather than `catch (MissingSecretValueException)`, which will never trigger in batch mode.
+With `UseBatchFetch = true`, whether this exception arrives directly or wrapped depends on *how* AWS reported the failure:
+
+- If AWS returns the missing-secret failure as a per-secret error inside the batch response (the normal case), it's wrapped inside the `AggregateException` described above — catch `AggregateException` and check `ex.InnerExceptions.OfType<MissingSecretValueException>()`.
+- If the `BatchGetSecretValueAsync` call itself throws `ResourceNotFoundException` as a request-level failure (rather than returning it in the response body), the provider rethrows `MissingSecretValueException` **directly** — and this path is **not** gated by `IgnoreMissingValues` at all, unlike the single-fetch path.
+
+To handle batch-mode failures reliably, catch both `MissingSecretValueException` directly and `AggregateException` (inspecting `InnerExceptions`).
 
 ## `AggregateException` from batch fetch
 

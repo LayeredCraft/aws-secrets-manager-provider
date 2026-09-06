@@ -91,7 +91,7 @@ Default (no `credentials`/`region` passed): resolved via the standard AWS SDK fo
 - Don't claim binary secrets are decoded — they're skipped.
 - Don't claim `IgnoreMissingValues` suppresses all batch-mode errors — only all-missing-secret batches.
 - Don't recommend exposing configuration *values* (not just key names) through a diagnostic/health endpoint.
-- Don't invent options that don't exist on `SecretsManagerConfigurationProviderOptions` — the 10 listed above are the complete set.
+- Don't invent options that don't exist on `SecretsManagerConfigurationProviderOptions` — the 11 listed above are the complete set.
 - Don't assume this package handles secret rotation itself — rotation is an AWS Secrets Manager concept; this package only re-reads via polling/`ForceReloadAsync`.
 
 ## Where to point the user for more depth
