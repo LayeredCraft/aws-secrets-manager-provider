@@ -4,7 +4,7 @@ This repository ships a downloadable [Agent Skill](https://agentskills.io/) — 
 
 ## Why you'd want it
 
-Generic AI assistance about "AWS Secrets Manager + .NET configuration" tends to get several package-specific details wrong: it may assume automatic DI-based logger resolution (this package has none — see [Getting Started](getting-started.md)), guess at a different secret-to-key flattening scheme than the one this package actually uses, or not know that `IgnoreMissingValues` only suppresses *missing-secret* batch errors, not every error type. The skill encodes the actual, current, tested behavior of this package instead.
+Generic AI assistance about "AWS Secrets Manager + .NET configuration" tends to get several package-specific details wrong: it may assume automatic DI-based logger resolution (this package has none — see [Getting Started](getting-started.md)), guess at a different secret-to-key flattening scheme than the one this package actually uses, or misdescribe `IgnoreMissingValues` — in single-fetch mode it suppresses a missing secret's error outright, but in batch mode it only suppresses errors AWS reports *inside* the batch response, and only when every error in that batch is a missing-secret error; a request-level failure from the batch call itself is not suppressed by this option at all, regardless of mode. The skill encodes the actual, current, tested behavior of this package instead.
 
 ## What it's for
 

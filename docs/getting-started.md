@@ -48,6 +48,8 @@ host.Run();
 ## ASP.NET Core (minimal hosting)
 
 ```csharp
+using AWSSecretsManager.Provider;
+
 var builder = WebApplication.CreateBuilder(args);
 
 using var loggerFactory = LoggerFactory.Create(lb => lb.AddConsole());
@@ -88,7 +90,7 @@ IConfigurationBuilder AddSecretsManager(
 !!! warning "There is no automatic logger resolution"
     Unlike some `IConfigurationSource` integrations, this provider does **not** pull an `ILogger` from dependency injection automatically, even inside `ConfigureAppConfiguration` in a generic host. If you want log output (load timing, polling status, reload results), you must explicitly pass a logger or logger factory to one of the two logging overloads. The no-argument overload is always silent.
 
-Use the `loggerFactory` overload when you already have one in scope (e.g. built once at startup) — it's the pattern used throughout the samples. Use the explicit `ILogger<SecretsManagerConfigurationProvider>` overload if you're constructing a logger some other way. Use the plain overload when you don't need diagnostics.
+Use the `loggerFactory` overload when you already have one in scope (e.g. built once at startup) — it's the pattern used by the two logging-focused samples, `Sample7` and `SampleWeb` (the other samples, `Sample1`-`Sample6`, use the plain no-logger overload since logging isn't what they're demonstrating). Use the explicit `ILogger<SecretsManagerConfigurationProvider>` overload if you're constructing a logger some other way. Use the plain overload when you don't need diagnostics.
 
 ## Next steps
 
