@@ -20,4 +20,5 @@ jobs:
       enableCodeCoverage: true
       useMtpRunner: true
       coverageThreshold: 70
+      coverageSettingsPath: codecoverage.runsettings
     secrets: inherit

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <CodeCoverage>
+    <!--
+      Test assemblies are excluded from instrumentation:
+
+      - Instrumenting the Compono source-generated test doubles intermittently
+        fails with System.BadImageFormatException ("Bad IL range"), which aborts
+        the test host before any test runs (exit code 134).
+      - Test-assembly self-coverage is meaningless and, because every test host
+        writes its report to the same output path, whichever host finishes last
+        determines the published summary. A host whose report includes test
+        assemblies drags the overall rate below the 70% gate.
+
+      Excluding test modules leaves only the production provider assemblies in
+      each report, so the summary is stable and above the threshold.
+    -->
+    <ModulePaths>
+      <Exclude>
+        <!-- Matches the file name only (not the containing path), so test
+             projects under a "...Tests" directory do not exclude the
+             production assemblies copied next to them. -->
+        <ModulePath>[^/\\]*Tests\.dll$</ModulePath>
+      </Exclude>
+    </ModulePaths>
+  </CodeCoverage>
+</Configuration>
