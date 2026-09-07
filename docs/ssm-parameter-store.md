@@ -41,6 +41,9 @@ config["Db:Config:ConnectionString"]    → server=db
 
 With the default `Path = "/"` the leading hierarchy level is kept: `/MyApp/Db/Host` maps to `MyApp:Db:Host`.
 
+!!! warning "Default path fetches the entire account"
+    The defaults (`Path = "/"`, `Recursive = true`) fetch **every parameter in the account**, which increases startup latency, pulls in unrelated parameters, and requires broad `ssm:GetParametersByPath` permissions. Always scope `Path` to your application's hierarchy (e.g. `"/MyApp"`) in real environments.
+
 ## Options (`SsmConfigurationProviderOptions`)
 
 | Option | Default | Purpose |
