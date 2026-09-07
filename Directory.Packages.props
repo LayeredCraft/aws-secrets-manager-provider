@@ -3,6 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="AWS SDK">
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.1" />
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.11" />
     <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.103.7" />
   </ItemGroup>
@@ -19,6 +20,7 @@
        lower bounds without crossing into the next major/preview line. -->
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[8.0.0, 9.0.0)" />
+    <PackageVersion Include="System.Text.Json" Version="[8.0.6, 9.0.0)" />
   </ItemGroup>
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net9.0'">
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[9.0.18, 10.0.0)" />

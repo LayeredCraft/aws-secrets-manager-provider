@@ -4,11 +4,10 @@ using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 
-namespace AWSSecretsManager.Provider.Internal;
+namespace AWSConfiguration.Core.Internal;
 
 /// <summary>
 /// Shared helper that flattens JSON documents into configuration key/value pairs.
-/// Linked into both provider assemblies; internal to each.
 /// </summary>
 internal static class JsonFlattener
 {

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <LangVersion>default</LangVersion>
+	<Nullable>enable</Nullable>
+    <TargetFrameworks>netstandard2.0;net8.0;net9.0;net10.0;net11.0</TargetFrameworks>
+    <PackageId>AWSConfiguration.Core</PackageId>
+    <Title>AWSConfiguration.Core</Title>
+    <Description>Shared infrastructure for AWS-backed Microsoft.Extensions.Configuration providers: polling configuration provider base, JSON value flattening, and AWS client-configuration source helpers.</Description>
+    <PackageTags>aws;configuration;provider;core;dotnet;extension</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.Core" />
+    <PackageReference Include="LayeredCraft.StructuredLogging" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="System.Text.Json" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AWSSecretsManager.Provider" />
+    <InternalsVisibleTo Include="AWSSSM.Provider" />
+    <InternalsVisibleTo Include="AWSConfiguration.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="" Visible="false" />
+    <None Include="..\..\icon.png" Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
+</Project>

@@ -14,12 +14,11 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.SimpleSystemsManagement" />
-    <PackageReference Include="LayeredCraft.StructuredLogging" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\AWSSecretsManager.Provider\Internal\JsonFlattener.cs" Link="Internal\JsonFlattener.cs" />
+    <ProjectReference Include="..\AWSConfiguration.Core\AWSConfiguration.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
