@@ -138,10 +138,63 @@ public class PollingConfigurationProviderTests
 
         sut.FetchImpl = _ => Values(("Key", "Updated"));
 
-        Thread.Sleep(300);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline && callbackCallCount == 0)
+        {
+            Thread.Sleep(50);
+        }
 
         callbackCallCount.Should().Be(1);
         sut.Get("Key").Should().Be("Updated");
+    }
+
+    [Fact]
+    public void Polling_should_keep_previous_data_when_reload_produces_duplicate_keys()
+    {
+        var sut = new FakePollingProvider
+        {
+            FetchImpl = _ => Values(("Key", "Initial")),
+            Interval = TimeSpan.FromMilliseconds(50)
+        };
+
+        sut.Load();
+        sut.Get("Key").Should().Be("Initial");
+
+        sut.FetchImpl = _ => Values(("Key", "First"), ("Key", "Second"));
+
+        Thread.Sleep(250);
+
+        sut.Get("Key").Should().Be("Initial");
+    }
+
+    [Fact]
+    public void Polling_should_retry_reload_after_duplicate_key_failure()
+    {
+        var sut = new FakePollingProvider
+        {
+            FetchImpl = _ => Values(("Key", "Initial")),
+            Interval = TimeSpan.FromMilliseconds(50)
+        };
+
+        sut.Load();
+        sut.Get("Key").Should().Be("Initial");
+
+        // A reload that fails duplicate-key validation must not be marked as
+        // applied; otherwise identical subsequent fetches would be skipped and
+        // the data would go stale.
+        sut.FetchImpl = _ => Values(("Key", "First"), ("Key", "Second"));
+        Thread.Sleep(250);
+        sut.Get("Key").Should().Be("Initial");
+
+        sut.FetchImpl = _ => Values(("Key", "Recovered"));
+
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline && sut.Get("Key") != "Recovered")
+        {
+            Thread.Sleep(50);
+        }
+
+        sut.Get("Key").Should().Be("Recovered");
     }
 
     [Fact]

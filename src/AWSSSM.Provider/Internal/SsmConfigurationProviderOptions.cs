@@ -81,6 +81,18 @@ public class SsmConfigurationProviderOptions
 
         key = key.TrimStart('/').Replace('/', ':');
 
-        return key.Length > 0 ? key : parameterName.TrimStart('/').Replace('/', ':');
+        if (key.Length == 0)
+        {
+            key = parameterName.TrimStart('/').Replace('/', ':');
+        }
+
+        if (key.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"Parameter '{parameterName}' maps to an empty configuration key. " +
+                "Adjust the KeyGenerator option so each parameter maps to a unique, non-empty key.");
+        }
+
+        return key;
     }
 }

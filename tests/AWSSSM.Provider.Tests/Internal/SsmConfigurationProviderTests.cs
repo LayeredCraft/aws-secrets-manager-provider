@@ -259,6 +259,8 @@ public class SsmConfigurationProviderTests
         callbackCallCount.Should().Be(1);
         callbackState.Should().BeSameAs(changeCallbackState);
         sut.Get(testParameter.Name).Should().Be("updated");
+
+        sut.Dispose();
     }
 
     [Theory, Compose<ComponoTestProfile>]
@@ -353,6 +355,27 @@ public class SsmConfigurationProviderTests
         var loadAction = () => sut.Load();
 
         loadAction.Should().Throw<InvalidOperationException>().WithMessage("*Db:Host*");
+    }
+
+    [Fact]
+    public void Key_generator_throws_for_parameter_that_maps_to_empty_key()
+    {
+        var ssm = new FakeSsmClient();
+        var options = new SsmConfigurationProviderOptions { Path = "/" };
+        var sut = new SsmConfigurationProvider(ssm, options, null);
+
+        ssm.SetupResponse(new GetParametersByPathResponse
+        {
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "/", Value = "value", Type = ParameterType.String }
+            }
+        });
+
+        var loadAction = () => sut.Load();
+
+        loadAction.Should().Throw<InvalidOperationException>()
+            .WithMessage("*empty configuration key*");
     }
 
     [Fact]

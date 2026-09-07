@@ -123,15 +123,18 @@ public abstract class PollingConfigurationProvider : ConfigurationProvider, IDis
     {
         if (!configuration.Add((key, value)))
         {
-            _logger?.Warning("Duplicate configuration key '{ConfigurationKey}' was generated more than once; the first value is kept", key);
+            _logger?.Warning("Duplicate configuration key '{ConfigurationKey}' was generated more than once with an identical value; the extra entry was ignored", key);
         }
     }
 
     private async Task LoadAsync()
     {
-        _loadedValues = await FetchConfigurationAsync(default).ConfigureAwait(false);
+        var values = await FetchConfigurationAsync(default).ConfigureAwait(false);
 
-        SetData(_loadedValues, triggerReload: false);
+        // Build the data before committing any state so a duplicate-key failure
+        // cannot leave _loadedValues out of sync with the data that was loaded.
+        Data = BuildData(values);
+        _loadedValues = values;
 
         if (PollingInterval.HasValue)
         {
@@ -210,23 +213,27 @@ public abstract class PollingConfigurationProvider : ConfigurationProvider, IDis
 
         var newValues = await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false);
 
-        if (!oldValues.SetEquals(newValues))
-        {
-            _loadedValues = newValues;
-            SetData(_loadedValues, triggerReload: true);
-
-            var addedCount = newValues.Except(oldValues).Count();
-            var removedCount = oldValues.Except(newValues).Count();
-            _logger?.Information("{ResourceNoun} changes detected and reloaded. {AddedCount} added, {RemovedCount} removed",
-                ResourceNoun, addedCount, removedCount);
-        }
-        else
+        if (oldValues.SetEquals(newValues))
         {
             _logger?.Debug("No {ResourceNoun} changes detected", ResourceNoun);
+            return;
         }
+
+        // Build the data before committing any state so a duplicate-key failure
+        // leaves _loadedValues unchanged and the next poll retries the reload.
+        var data = BuildData(newValues);
+
+        _loadedValues = newValues;
+        Data = data;
+        OnReload();
+
+        var addedCount = newValues.Except(oldValues).Count();
+        var removedCount = oldValues.Except(newValues).Count();
+        _logger?.Information("{ResourceNoun} changes detected and reloaded. {AddedCount} added, {RemovedCount} removed",
+            ResourceNoun, addedCount, removedCount);
     }
 
-    private void SetData(IEnumerable<(string, string?)> values, bool triggerReload)
+    private Dictionary<string, string?> BuildData(HashSet<(string, string?)> values)
     {
         var data = new Dictionary<string, string?>(StringComparer.InvariantCultureIgnoreCase);
 
@@ -242,11 +249,6 @@ public abstract class PollingConfigurationProvider : ConfigurationProvider, IDis
             data[key] = value;
         }
 
-        Data = data;
-
-        if (triggerReload)
-        {
-            OnReload();
-        }
+        return data;
     }
 }
