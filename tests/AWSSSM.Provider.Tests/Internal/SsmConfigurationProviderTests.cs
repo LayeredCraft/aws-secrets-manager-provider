@@ -223,7 +223,7 @@ public class SsmConfigurationProviderTests
     }
 
     [Theory, Compose<ComponoTestProfile>]
-    public void Should_poll_and_reload_when_parameters_changed([Shared] Parameter testParameter,
+    public async Task Should_poll_and_reload_when_parameters_changed([Shared] Parameter testParameter,
         [Shared] FakeSsmClient ssm, [Shared] SsmConfigurationProviderOptions options,
         FakeBackedSsmConfigurationProvider sut, object changeCallbackState)
     {
@@ -250,7 +250,11 @@ public class SsmConfigurationProviderTests
             Parameters = new List<Parameter> { new Parameter { Name = testParameter.Name, Value = "updated" } }
         });
 
-        Thread.Sleep(200);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline && callbackCallCount == 0)
+        {
+            await Task.Delay(50);
+        }
 
         callbackCallCount.Should().Be(1);
         callbackState.Should().BeSameAs(changeCallbackState);

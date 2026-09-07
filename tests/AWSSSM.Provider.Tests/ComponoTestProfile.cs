@@ -60,7 +60,6 @@ public class FakeSsmClient : AmazonSimpleSystemsManagementClient
 {
     private readonly List<GetParametersByPathRequest> _requests = new();
     private GetParametersByPathResponse _response = new() { Parameters = new List<Parameter>() };
-    private Exception? _exception;
 
     public FakeSsmClient()
         : base(new AnonymousAWSCredentials(),
@@ -74,23 +73,12 @@ public class FakeSsmClient : AmazonSimpleSystemsManagementClient
     {
         response.Parameters ??= new List<Parameter>();
         _response = response;
-        _exception = null;
-    }
-
-    public void ThrowOnRequest(Exception exception)
-    {
-        _exception = exception;
     }
 
     public override Task<GetParametersByPathResponse> GetParametersByPathAsync(GetParametersByPathRequest request,
         CancellationToken cancellationToken = default)
     {
         _requests.Add(request);
-
-        if (_exception is not null)
-        {
-            throw _exception;
-        }
 
         return Task.FromResult(_response);
     }
