@@ -91,7 +91,10 @@ public class SsmConfigurationSourceWithLoggerTests
     public void Build_creates_provider_with_logger(Microsoft.Extensions.Logging.ILogger<SsmConfigurationProvider> logger,
         SsmConfigurationProviderOptions options, IConfigurationBuilder configurationBuilder)
     {
-        var sut = new SsmConfigurationSourceWithLogger(null, options, logger);
+        var sut = new SsmConfigurationSourceWithLogger(null, options, logger)
+        {
+            Region = Amazon.RegionEndpoint.USEast1
+        };
 
         var provider = sut.Build(configurationBuilder);
 

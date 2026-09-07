@@ -9,6 +9,14 @@ namespace AWSSSM.Provider;
 
 public static class SsmExtensions
 {
+    /// <summary>
+    /// Adds AWS SSM Parameter Store as a configuration source.
+    /// </summary>
+    /// <param name="configurationBuilder">The configuration builder</param>
+    /// <param name="credentials">AWS credentials</param>
+    /// <param name="region">AWS region</param>
+    /// <param name="configurator">Options configurator</param>
+    /// <returns>The configuration builder</returns>
     public static IConfigurationBuilder AddSsmParameters(this IConfigurationBuilder configurationBuilder,
         AWSCredentials? credentials = null,
         RegionEndpoint? region = null,

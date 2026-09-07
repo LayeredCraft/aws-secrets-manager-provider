@@ -49,13 +49,16 @@ public sealed class FlociFixture : IAsyncLifetime
     {
         var dockerHost = Environment.GetEnvironmentVariable("DOCKER_HOST");
 
-        if (!string.IsNullOrWhiteSpace(dockerHost))
+        if (Uri.TryCreate(dockerHost, UriKind.Absolute, out var uri))
         {
-            if (Uri.TryCreate(dockerHost, UriKind.Absolute, out var uri)
-                && (uri.Scheme == "unix" || uri.Scheme == "npipe"))
+            // unix sockets and named pipes can be probed locally; remote daemons
+            // cannot - assume reachable and let the container start fail loudly.
+            return uri.Scheme switch
             {
-                return File.Exists(uri.LocalPath);
-            }
+                "unix" => File.Exists(uri.LocalPath),
+                "npipe" => System.OperatingSystem.IsWindows() && File.Exists(@"\\.\pipe\docker_engine"),
+                _ => true
+            };
         }
 
         try

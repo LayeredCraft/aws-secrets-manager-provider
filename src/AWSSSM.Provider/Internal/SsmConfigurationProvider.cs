@@ -86,9 +86,33 @@ public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
 
         if (Options.PollingInterval.HasValue)
         {
+            await StopPollingAsync().ConfigureAwait(false);
+
             _cancellationToken = new CancellationTokenSource();
             _pollingTask = PollForChangesAsync(Options.PollingInterval.Value, _cancellationToken.Token);
         }
+    }
+
+    private async Task StopPollingAsync()
+    {
+        if (_cancellationToken is null && _pollingTask is null)
+        {
+            return;
+        }
+
+        _cancellationToken?.Cancel();
+
+        try
+        {
+            await _pollingTask!.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when the poller was cancelled during shutdown or a restart.
+        }
+
+        _cancellationToken = null;
+        _pollingTask = null;
     }
 
     private async Task PollForChangesAsync(TimeSpan interval, CancellationToken cancellationToken)
@@ -190,12 +214,12 @@ public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
                 {
                     foreach (var (key, item) in JsonFlattener.ExtractValues(jElement!, configurationKey))
                     {
-                        configuration.Add((key, item));
+                        AddConfigurationValue(configuration, key, item);
                     }
                 }
                 else
                 {
-                    configuration.Add((configurationKey, value));
+                    AddConfigurationValue(configuration, configurationKey, value);
                 }
             }
         } while (response.NextToken != null);
@@ -203,9 +227,32 @@ public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
         return configuration;
     }
 
+    private void AddConfigurationValue(HashSet<(string, string?)> configuration, string key, string? value)
+    {
+        if (!configuration.Add((key, value)))
+        {
+            _logger?.Warning("Duplicate configuration key '{ConfigurationKey}' was generated more than once; the first value is kept", key);
+        }
+    }
+
     private void SetData(IEnumerable<(string, string?)> values, bool triggerReload)
     {
-        Data = values.ToDictionary<(string, string?), string, string?>(x => x.Item1, x => x.Item2, StringComparer.InvariantCultureIgnoreCase);
+        var data = new Dictionary<string, string?>(StringComparer.InvariantCultureIgnoreCase);
+
+        foreach (var (key, value) in values)
+        {
+            if (data.ContainsKey(key))
+            {
+                throw new InvalidOperationException(
+                    $"Configuration key '{key}' was generated more than once (keys are case-insensitive). " +
+                    "Adjust the KeyGenerator or ParameterFilter options so each parameter maps to a unique key.");
+            }
+
+            data[key] = value;
+        }
+
+        Data = data;
+
         if (triggerReload)
         {
             OnReload();
@@ -224,7 +271,7 @@ public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
         {
             _pollingTask?.GetAwaiter().GetResult();
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
         {
         }
         _pollingTask = null;

@@ -72,8 +72,11 @@ public class SsmConfigurationProviderOptions
 
     internal static string DefaultKeyGenerator(string parameterName, string path)
     {
-        var key = path != "/" && parameterName.StartsWith(path, StringComparison.OrdinalIgnoreCase)
-            ? parameterName.Substring(path.Length)
+        var normalizedPath = path.TrimEnd('/');
+        var prefix = normalizedPath.Length == 0 ? "/" : normalizedPath + "/";
+
+        var key = parameterName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? parameterName.Substring(prefix.Length)
             : parameterName;
 
         key = key.TrimStart('/').Replace('/', ':');

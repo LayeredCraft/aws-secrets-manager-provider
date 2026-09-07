@@ -288,4 +288,92 @@ public class SsmConfigurationProviderTests
         callbackState.Should().BeSameAs(changeCallbackState);
         sut.Get(testParameter.Name).Should().Be("updated");
     }
+
+    [Fact]
+    public void Key_generator_requires_separator_after_path_prefix()
+    {
+        var ssm = new FakeSsmClient();
+        var options = new SsmConfigurationProviderOptions { Path = "/MyApp" };
+        var sut = new SsmConfigurationProvider(ssm, options, null);
+
+        ssm.SetupResponse(new GetParametersByPathResponse
+        {
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "/MyAppDev/Setting", Value = "value", Type = ParameterType.String }
+            }
+        });
+
+        sut.Load();
+
+        sut.HasKey("Dev", "Setting").Should().BeFalse();
+        sut.Get("MyAppDev", "Setting").Should().Be("value");
+    }
+
+    [Fact]
+    public void Case_insensitive_duplicate_keys_throw_descriptive_exception()
+    {
+        var ssm = new FakeSsmClient();
+        var options = new SsmConfigurationProviderOptions { Path = "/MyApp" };
+        var sut = new SsmConfigurationProvider(ssm, options, null);
+
+        ssm.SetupResponse(new GetParametersByPathResponse
+        {
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "/MyApp/Db/Host", Value = "localhost", Type = ParameterType.String },
+                new Parameter { Name = "/myapp/db/host", Value = "remote", Type = ParameterType.String }
+            }
+        });
+
+        var loadAction = () => sut.Load();
+
+        loadAction.Should().Throw<InvalidOperationException>().WithMessage("*Db:Host*");
+    }
+
+    [Fact]
+    public void Same_key_from_flattened_json_and_child_parameter_throws_descriptive_exception()
+    {
+        var ssm = new FakeSsmClient();
+        var sut = new SsmConfigurationProvider(ssm, new SsmConfigurationProviderOptions(), null);
+
+        ssm.SetupResponse(new GetParametersByPathResponse
+        {
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "/MyApp/Db", Value = """{"Host": "json-host"}""", Type = ParameterType.String },
+                new Parameter { Name = "/MyApp/Db/Host", Value = "param-host", Type = ParameterType.String }
+            }
+        });
+
+        var loadAction = () => sut.Load();
+
+        loadAction.Should().Throw<InvalidOperationException>().WithMessage("*Db:Host*");
+    }
+
+    [Fact]
+    public async Task Loading_twice_does_not_leave_multiple_pollers_running()
+    {
+        var ssm = new FakeSsmClient();
+        var options = new SsmConfigurationProviderOptions { PollingInterval = TimeSpan.FromMilliseconds(50) };
+        var sut = new SsmConfigurationProvider(ssm, options, null);
+
+        ssm.SetupResponse(new GetParametersByPathResponse
+        {
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "test-param", Value = "value", Type = ParameterType.String }
+            }
+        });
+
+        sut.Load();
+        sut.Load();
+        sut.Dispose();
+
+        var requestCountAfterDispose = ssm.Requests.Count;
+
+        await Task.Delay(200);
+
+        ssm.Requests.Count.Should().Be(requestCountAfterDispose);
+    }
 }
