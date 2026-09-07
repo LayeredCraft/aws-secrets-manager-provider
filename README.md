@@ -41,6 +41,27 @@ Console.WriteLine("Secret: " + config["MySecret"]);
 
 Your application must have AWS credentials available through the default AWS SDK mechanisms. See [Authentication & Security](https://layeredcraft.github.io/aws-secrets-manager-provider/authentication-and-security/) for details.
 
+## 🌿 Sibling Package: AWSSSM.Provider
+
+The same configuration-pipeline pattern, backed by [AWS SSM Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html) instead of Secrets Manager:
+
+```bash
+dotnet add package AWSSSM.Provider
+```
+
+```csharp
+using AWSSSM.Provider;
+using Microsoft.Extensions.Configuration;
+
+var builder = new ConfigurationBuilder();
+builder.AddSsmParameters(configurator: options => options.Path = "/MyApp");
+
+var config = builder.Build();
+Console.WriteLine("Db Host: " + config["Db:Host"]);
+```
+
+See the [SSM Parameter Store docs](https://layeredcraft.github.io/aws-secrets-manager-provider/ssm-parameter-store/) for options and key-mapping rules.
+
 ## 📖 Documentation
 
 The full documentation site covers installation, every configuration option, secret-to-key mapping rules, batch fetch and polling, authentication/IAM, LocalStack, troubleshooting, and the complete API reference:

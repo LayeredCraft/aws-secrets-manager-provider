@@ -144,3 +144,71 @@ public class MissingSecretValueException : Exception
 ```
 
 Thrown **directly** by the single-fetch path when a secret can't be retrieved and `IgnoreMissingValues` is `false`. In batch mode (`UseBatchFetch = true`) there are two distinct paths: a per-secret missing-value failure returned inside the batch response is wrapped inside an `AggregateException` (unless `IgnoreMissingValues` is `true` **and** every error in that batch is a missing-secret error), while a request-level `ResourceNotFoundException` from the `BatchGetSecretValueAsync` call itself is rethrown as `MissingSecretValueException` **directly** — unconditionally, regardless of `IgnoreMissingValues`. A caller using `UseBatchFetch` should catch both `MissingSecretValueException` directly and `AggregateException` (inspecting `InnerExceptions` for further `MissingSecretValueException` entries) to handle *missing-secret* failures specifically. This does **not** cover every possible batch-mode failure: other AWS SDK exceptions — an authorization failure, throttling, or a service error from `ListSecretsAsync` or `BatchGetSecretValueAsync` itself — are only caught if they match `ResourceNotFoundException`; anything else propagates directly, uncaught by either of these two shapes. See [Troubleshooting & FAQ](troubleshooting.md).
+
+---
+
+# SSM Parameter Store (AWSSSM.Provider)
+
+The sibling package `AWSSSM.Provider` mirrors this API shape for SSM Parameter Store. Full behavior notes in [SSM Parameter Store](ssm-parameter-store.md).
+
+## `AWSSSM.Provider.SsmExtensions`
+
+```csharp
+public static IConfigurationBuilder AddSsmParameters(
+    this IConfigurationBuilder configurationBuilder,
+    AWSCredentials? credentials = null,
+    RegionEndpoint? region = null,
+    Action<SsmConfigurationProviderOptions>? configurator = null);
+public static IConfigurationBuilder AddSsmParameters(
+    this IConfigurationBuilder configurationBuilder,
+    ILogger<SsmConfigurationProvider> logger,
+    AWSCredentials? credentials = null,
+    RegionEndpoint? region = null,
+    Action<SsmConfigurationProviderOptions>? configurator = null);
+public static IConfigurationBuilder AddSsmParameters(
+    this IConfigurationBuilder configurationBuilder,
+    ILoggerFactory loggerFactory,
+    AWSCredentials? credentials = null,
+    RegionEndpoint? region = null,
+    Action<SsmConfigurationProviderOptions>? configurator = null);
+```
+
+Same overload semantics as `AddSecretsManager`.
+
+## `AWSSSM.Provider.Internal.SsmConfigurationProviderOptions`
+
+| Member | Signature | Default |
+|---|---|---|
+| `Path` | `string` | `"/"` |
+| `Recursive` | `bool` | `true` |
+| `WithDecryption` | `bool` | `true` |
+| `ParameterFilter` | `Func<Parameter, bool>` | `_ => true` |
+| `KeyGenerator` | `Func<string, string, string>` | strip path prefix, `/` → `:` |
+| `ConfigureSsmConfig` | `Action<AmazonSimpleSystemsManagementConfig>` | no-op |
+| `CreateClient` | `Func<IAmazonSimpleSystemsManagement>?` | `null` |
+| `PollingInterval` | `TimeSpan?` | `null` |
+
+## `AWSSSM.Provider.Internal.SsmConfigurationProvider`
+
+```csharp
+public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
+{
+    public SsmConfigurationProviderOptions Options { get; }
+    public IAmazonSimpleSystemsManagement Client { get; }
+
+    public SsmConfigurationProvider(
+        IAmazonSimpleSystemsManagement client,
+        SsmConfigurationProviderOptions options,
+        ILogger? logger = null);
+
+    public override void Load();
+    public Task ForceReloadAsync(CancellationToken cancellationToken);
+    public void Dispose();
+}
+```
+
+Same `Load`/`ForceReloadAsync`/`Dispose` semantics as `SecretsManagerConfigurationProvider`, minus batch-fetch specifics.
+
+## `AWSSSM.Provider.Internal.SsmConfigurationSource` / `SsmConfigurationSourceWithLogger`
+
+Same shape and constructor null-checks as the Secrets Manager sources; produced by the corresponding `AddSsmParameters` overloads.

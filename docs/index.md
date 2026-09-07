@@ -2,6 +2,8 @@
 
 **AWSSecretsManager.Provider** is a [Microsoft.Extensions.Configuration](https://www.nuget.org/packages/Microsoft.Extensions.Configuration/) provider that loads configuration values from [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/). It plugs into the standard `IConfigurationBuilder` pipeline the same way `AddJsonFile` or `AddEnvironmentVariables` do, so secrets show up alongside your other configuration sources with no special API to learn.
 
+A sibling package, **[AWSSSM.Provider](ssm-parameter-store.md)**, provides the same pipeline backed by AWS SSM Parameter Store.
+
 It is a modern, community-maintained fork of [Kralizek/AWSSecretsManagerConfigurationExtensions](https://github.com/Kralizek/AWSSecretsManagerConfigurationExtensions) (originally by Renato Golia), retargeted to current .NET, converted to `System.Text.Json` only, and extended with structured logging, polling/reload, and batch-fetch support.
 
 ## What it does
