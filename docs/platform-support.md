@@ -59,4 +59,4 @@ This repository's own SSM integration test suite (`tests/AWSSSM.Provider.Tests/I
 
 ## Sibling package target framework matrix
 
-`AWSSSM.Provider` (SSM Parameter Store) targets `netstandard2.0`, `net8.0`, and `net9.0`.
+`AWSSSM.Provider` (SSM Parameter Store) targets `netstandard2.0`, `net8.0`, `net9.0`, `net10.0`, and `net11.0`.

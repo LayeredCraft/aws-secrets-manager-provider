@@ -8,7 +8,7 @@
 dotnet add package AWSSSM.Provider
 ```
 
-Supported: `netstandard2.0` (→ .NET Framework 4.6.2+), `net8.0`, `net9.0`.
+Supported: `netstandard2.0` (→ .NET Framework 4.6.2+), `net8.0`, `net9.0`, `net10.0`, `net11.0`.
 
 ## Getting started
 
