@@ -1,0 +1,77 @@
+{
+  "skill_name": "aws-ssm-provider",
+  "evals": [
+    {
+      "id": 1,
+      "category": "normal-usage",
+      "prompt": "I'm building an ASP.NET Core minimal API and want to load all parameters under /MyApp/prod from SSM Parameter Store into IConfiguration. How do I wire this up?",
+      "expected_output": "Adds the AWSSSM.Provider NuGet package and calls builder.Configuration.AddSsmParameters(...) with configurator options => options.Path = \"/MyApp/prod\", explaining the parameters become configuration keys by stripping the path prefix and converting slashes to colons (/MyApp/prod/Db/Host becomes Db:Host).",
+      "files": [],
+      "assertions": [
+        "Uses AddSsmParameters (not AddSecretsManager) and the AWSSSM.Provider package",
+        "Sets Path to /MyApp/prod as the scoping mechanism",
+        "Explains the / to : key conversion and path-prefix stripping correctly"
+      ]
+    },
+    {
+      "id": 2,
+      "category": "advanced",
+      "prompt": "I have parameters in SSM Parameter Store including some SecureString values, and I want the app to pick up changes every minute without restarting. What options do I need?",
+      "expected_output": "Sets PollingInterval = TimeSpan.FromMinutes(1) for background reload, keeps WithDecryption = true (the default) for SecureString values, and mentions the kms:Decrypt IAM permission requirement alongside ssm:GetParametersByPath.",
+      "files": [],
+      "assertions": [
+        "Sets PollingInterval to enable background reload rather than suggesting a restart or manual reload call",
+        "Does not disable WithDecryption or claim SecureString needs extra package code",
+        "Mentions kms:Decrypt is required for SecureString decryption"
+      ]
+    },
+    {
+      "id": 3,
+      "category": "edge-case",
+      "prompt": "A parameter at /MyApp/Config contains JSON like {\"ConnectionStrings\":{\"Primary\":\"...\"}}. How do I read the Primary connection string from IConfiguration?",
+      "expected_output": "Explains the JSON value is recursively flattened using ':'-delimited keys, so with Path = /MyApp the value is readable at configuration[\"Config:ConnectionStrings:Primary\"], and that key lookups are case-insensitive.",
+      "files": [],
+      "assertions": [
+        "Correctly describes ':'-delimited JSON flattening with the path prefix stripped",
+        "States that configuration key lookups are case-insensitive",
+        "Does not claim Newtonsoft/JSON.NET or a different delimiter is used"
+      ]
+    },
+    {
+      "id": 4,
+      "category": "commonly-misunderstood",
+      "prompt": "I called AddSsmParameters() with the default options but my parameter /Prod/ApiKey isn't showing up and nothing throws. Why?",
+      "expected_output": "Explains the default Path is \"/\", so the parameter should appear under Prod:ApiKey (leading slash stripped, slash to colon) — and lists likely causes: an IAM identity without ssm:GetParametersByPath permission for the hierarchy, the parameter living in a different region than the client resolved, or a ParameterFilter excluding it. Also notes this package never throws for absent parameters — an empty path yields an empty configuration.",
+      "files": [],
+      "assertions": [
+        "Correctly maps /Prod/ApiKey under the default root Path to the key Prod:ApiKey",
+        "Does not invent an IgnoreMissingValues-style error, or claim the provider throws when a parameter is absent",
+        "Lists permission, region, or filter mismatch as candidate causes"
+      ]
+    },
+    {
+      "id": 5,
+      "category": "skill-value-add",
+      "prompt": "For local development I want to point the SSM provider at a Floci container on localhost:4566 instead of real AWS.",
+      "expected_output": "Uses ConfigureSsmConfig to set ServiceURL = http://localhost:4566 (and AuthenticationRegion), passes BasicAWSCredentials(\"test\", \"test\") or similar non-empty dummy credentials, and notes Floci fully emulates Parameter Store including SecureString decryption.",
+      "files": [],
+      "assertions": [
+        "Uses ConfigureSsmConfig with ServiceURL pointed at the local endpoint rather than CreateClient bypassing it unnecessarily",
+        "Uses non-empty dummy credentials for the local emulator",
+        "Does not invent a dedicated first-class Floci/LocalStack integration package"
+      ]
+    },
+    {
+      "id": 6,
+      "category": "commonly-misunderstood",
+      "prompt": "Is AWSSSM.Provider the same as AWSSecretsManager.Provider? Can I use AddSecretsManager to read SSM parameters?",
+      "expected_output": "Clarifies they are sibling packages for different AWS services: AWSSSM.Provider reads SSM Parameter Store via AddSsmParameters/GetParametersByPath; AWSSecretsManager.Provider reads Secrets Manager via AddSecretsManager. AddSecretsManager cannot read SSM parameters, and the options types are different (SsmConfigurationProviderOptions has no UseBatchFetch/IgnoreMissingValues/AcceptedSecretArns; the SSM interface is IAmazonSimpleSystemsManagement).",
+      "files": [],
+      "assertions": [
+        "Clearly separates the two packages and their AWS services",
+        "States AddSecretsManager does not read SSM Parameter Store",
+        "Does not claim SsmConfigurationProviderOptions has UseBatchFetch, IgnoreMissingValues, or AcceptedSecretArns options"
+      ]
+    }
+  ]
+}
