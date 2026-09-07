@@ -111,6 +111,7 @@ public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
             // Expected when the poller was cancelled during shutdown or a restart.
         }
 
+        _cancellationToken?.Dispose();
         _cancellationToken = null;
         _pollingTask = null;
     }
@@ -145,39 +146,34 @@ public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
     {
         if (_logger != null)
         {
-            await _logger.TimeAsync("Reloading parameters from AWS SSM Parameter Store", async () =>
-            {
-                var oldValues = _loadedValues;
-
-                var newValues = await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false);
-
-                if (!oldValues.SetEquals(newValues))
-                {
-                    _loadedValues = newValues;
-                    SetData(_loadedValues, triggerReload: true);
-
-                    var addedCount = newValues.Except(oldValues).Count();
-                    var removedCount = oldValues.Except(newValues).Count();
-                    _logger.Information("Parameter changes detected and reloaded. {AddedCount} added, {RemovedCount} removed",
-                        addedCount, removedCount);
-                }
-                else
-                {
-                    _logger.Debug("No parameter changes detected");
-                }
-            });
+            await _logger.TimeAsync("Reloading parameters from AWS SSM Parameter Store",
+                () => ReloadCoreAsync(cancellationToken)).ConfigureAwait(false);
         }
         else
         {
-            var oldValues = _loadedValues;
+            await ReloadCoreAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
 
-            var newValues = await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false);
+    private async Task ReloadCoreAsync(CancellationToken cancellationToken)
+    {
+        var oldValues = _loadedValues;
 
-            if (!oldValues.SetEquals(newValues))
-            {
-                _loadedValues = newValues;
-                SetData(_loadedValues, triggerReload: true);
-            }
+        var newValues = await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false);
+
+        if (!oldValues.SetEquals(newValues))
+        {
+            _loadedValues = newValues;
+            SetData(_loadedValues, triggerReload: true);
+
+            var addedCount = newValues.Except(oldValues).Count();
+            var removedCount = oldValues.Except(newValues).Count();
+            _logger?.Information("Parameter changes detected and reloaded. {AddedCount} added, {RemovedCount} removed",
+                addedCount, removedCount);
+        }
+        else
+        {
+            _logger?.Debug("No parameter changes detected");
         }
     }
 
@@ -265,7 +261,6 @@ public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
     public void Dispose()
     {
         _cancellationToken?.Cancel();
-        _cancellationToken = null;
 
         try
         {
@@ -274,6 +269,9 @@ public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
         catch (OperationCanceledException)
         {
         }
+
+        _cancellationToken?.Dispose();
+        _cancellationToken = null;
         _pollingTask = null;
     }
 }

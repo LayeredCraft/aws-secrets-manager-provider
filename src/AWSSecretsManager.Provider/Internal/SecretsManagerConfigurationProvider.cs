@@ -117,6 +117,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
             // Expected when the poller was cancelled during shutdown or a restart.
         }
 
+        _cancellationToken?.Dispose();
         _cancellationToken = null;
         _pollingTask = null;
     }
@@ -456,7 +457,6 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     public void Dispose()
     {
         _cancellationToken?.Cancel();
-        _cancellationToken = null;
 
         try
         {
@@ -465,6 +465,9 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         catch (OperationCanceledException)
         {
         }
+
+        _cancellationToken?.Dispose();
+        _cancellationToken = null;
         _pollingTask = null;
     }
 }
