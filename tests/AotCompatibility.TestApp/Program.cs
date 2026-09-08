@@ -1,3 +1,4 @@
+using System;
 using AWSSecretsManager.Provider;
 using AWSSSM.Provider;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +10,7 @@ configurationBuilder
 
 if (configurationBuilder.Sources.Count != 2)
 {
+    Console.WriteLine($"AOT compatibility failure: expected 2 configuration sources but found {configurationBuilder.Sources.Count}.");
     return 1;
 }
 
