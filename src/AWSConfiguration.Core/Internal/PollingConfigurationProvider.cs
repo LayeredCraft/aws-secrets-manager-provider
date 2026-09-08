@@ -239,10 +239,16 @@ public abstract class PollingConfigurationProvider : ConfigurationProvider, IDis
 
         foreach (var (key, value) in values)
         {
-            if (data.ContainsKey(key))
+            if (data.TryGetValue(key, out var existingValue))
             {
+                if (string.Equals(existingValue, value, StringComparison.Ordinal))
+                {
+                    _logger?.Warning("Duplicate configuration key '{ConfigurationKey}' was generated more than once with an identical value; the extra entry was ignored", key);
+                    continue;
+                }
+
                 throw new InvalidOperationException(
-                    $"Configuration key '{key}' was generated more than once (keys are case-insensitive). " +
+                    $"Configuration key '{key}' was generated more than once with different values (keys are case-insensitive). " +
                     DuplicateKeyOptionsHint);
             }
 

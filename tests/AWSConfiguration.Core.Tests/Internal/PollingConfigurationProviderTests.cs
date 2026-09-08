@@ -15,7 +15,7 @@ public class PollingConfigurationProviderTests
         public Func<CancellationToken, HashSet<(string, string?)>> FetchImpl { get; set; } = _ => new();
         public TimeSpan? Interval { get; set; }
 
-        public FakePollingProvider() : base(null)
+        public FakePollingProvider(Microsoft.Extensions.Logging.ILogger? logger = null) : base(logger)
         {
         }
 
@@ -36,6 +36,20 @@ public class PollingConfigurationProviderTests
     private static HashSet<(string, string?)> Values(params (string Key, string? Value)[] pairs)
     {
         return new HashSet<(string, string?)>(pairs);
+    }
+
+    private sealed class RecordingLogger : Microsoft.Extensions.Logging.ILogger
+    {
+        public List<string> Messages { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
     }
 
     [Fact]
@@ -63,8 +77,37 @@ public class PollingConfigurationProviderTests
         var loadAction = () => sut.Load();
 
         var exception = loadAction.Should().Throw<InvalidOperationException>().Which;
-        exception.Message.Should().Contain("Configuration key 'Key' was generated more than once (keys are case-insensitive).");
+        exception.Message.Should().Contain("Configuration key 'Key' was generated more than once with different values (keys are case-insensitive).");
         exception.Message.Should().Contain("Adjust the test options.");
+    }
+
+    [Fact]
+    public void Load_should_throw_on_case_variant_duplicate_keys_with_different_values()
+    {
+        var sut = new FakePollingProvider
+        {
+            FetchImpl = _ => Values(("Key", "First"), ("KEY", "Second"))
+        };
+
+        var loadAction = () => sut.Load();
+
+        loadAction.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Configuration key 'KEY' was generated more than once with different values (keys are case-insensitive).*");
+    }
+
+    [Fact]
+    public void Load_should_warn_and_ignore_case_variant_duplicate_keys_with_identical_values()
+    {
+        var logger = new RecordingLogger();
+        var sut = new FakePollingProvider(logger)
+        {
+            FetchImpl = _ => Values(("Key", "Value"), ("KEY", "Value"))
+        };
+
+        sut.Load();
+
+        sut.Get("Key").Should().Be("Value");
+        logger.Messages.Should().Contain(m => m.Contains("Duplicate configuration key"));
     }
 
     [Fact]

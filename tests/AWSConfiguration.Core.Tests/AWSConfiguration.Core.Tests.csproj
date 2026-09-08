@@ -12,7 +12,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.Core" />
     <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="LayeredCraft.StructuredLogging" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
     <PackageReference Include="xunit.v3.mtp-v2" />
@@ -22,8 +25,9 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- Core sources are shared (compiled into each provider); tests compile their own copy. -->
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AWSConfiguration.Core\AWSConfiguration.Core.csproj" />
+    <Compile Include="..\..\src\AWSConfiguration.Core\Internal\**\*.cs" LinkBase="Internal\AWSConfiguration.Core" />
   </ItemGroup>
 
 </Project>
