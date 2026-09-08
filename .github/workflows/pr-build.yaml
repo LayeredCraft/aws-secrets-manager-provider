@@ -47,7 +47,11 @@ jobs:
           set -euo pipefail
           mkdir -p ./coverage
           i=0
-          for project in tests/*.Tests/*.csproj; do
+          # AWSConfiguration.Core.Tests compiles its own copy of the shared core
+          # sources into the (excluded) test assembly, so its report contains no
+          # production modules and cannot be summarized; the shared code's
+          # coverage is already measured via the two provider test suites.
+          for project in tests/AWSSecretsManager.Provider.Tests/*.csproj tests/AWSSSM.Provider.Tests/*.csproj; do
             i=$((i+1))
             dotnet test "$project" -c Release --no-build \
               --framework net8.0 \
