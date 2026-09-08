@@ -5,6 +5,7 @@ on:
     branches:
       - main
 permissions: write-all
+
 jobs:
   build:
     uses: LayeredCraft/devops-templates/.github/workflows/pr-build.yaml@v10.5
@@ -17,7 +18,65 @@ jobs:
         10.0.x
         11.0.x
       runCdk: false
-      enableCodeCoverage: true
-      useMtpRunner: true
-      coverageThreshold: 70
-    secrets: inherit
+      # Coverage is collected in the dedicated `coverage` job below. The reusable
+      # workflow points every MTP test host (3 test projects x 4 TFMs, running
+      # concurrently) at the SAME coverage output file; dotnet-coverage then merges
+      # per-TFM builds of the same module names into one report, mixing line tables
+      # from different builds and producing nondeterministic coverage numbers that
+      # can fall below the gate (64% observed). Collecting on a single TFM with a
+      # unique output per project keeps the report deterministic.
+      enableCodeCoverage: false
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: |
+            8.0.x
+            11.0.x
+
+      - name: Build code
+        run: dotnet build AWSSecretsManager.slnx -c Release
+
+      - name: Test code with coverage
+        run: |
+          set -euo pipefail
+          mkdir -p ./coverage
+          i=0
+          # AWSConfiguration.Core.Tests compiles its own copy of the shared core
+          # sources into the (excluded) test assembly, so its report contains no
+          # production modules and cannot be summarized; the shared code's
+          # coverage is already measured via the two provider test suites.
+          for project in tests/AWSSecretsManager.Provider.Tests/*.csproj tests/AWSSSM.Provider.Tests/*.csproj; do
+            i=$((i+1))
+            dotnet test "$project" -c Release --no-build \
+              --framework net8.0 \
+              --coverage \
+              --coverage-output-format cobertura \
+              --coverage-output "./coverage/coverage-$i.cobertura.xml" \
+              --coverage-settings codecoverage.runsettings
+          done
+
+      - name: Code Coverage Summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: TestResults/coverage/*.cobertura.xml
+          badge: true
+          fail_below_min: true
+          format: markdown
+          hide_branch_rate: false
+          hide_complexity: true
+          indicators: true
+          output: both
+          thresholds: 70 80
+
+      - name: Upload Coverage Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: TestResults/coverage/*.cobertura.xml

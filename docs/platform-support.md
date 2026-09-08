@@ -35,3 +35,28 @@ builder.AddSecretsManager(
 This works because `ConfigureSecretsManagerConfig` runs against the same `AmazonSecretsManagerConfig` the real client is built from — as long as `CreateClient` isn't set (which bypasses this entirely; see [Advanced Usage](advanced.md)), overriding `ServiceURL` redirects every Secrets Manager call to your local endpoint. Everything else (JSON flattening, filtering, batch fetch, polling) behaves identically against LocalStack as it does against real AWS.
 
 This is a supported pattern via existing extensibility, not a dedicated first-class LocalStack integration — there's no LocalStack-specific package, sample, or test in this repository.
+
+## Local development against Floci
+
+[Floci](https://github.com/floci-io/floci) is a free, open-source local AWS emulator (LocalStack-compatible, port 4566) that fully emulates SSM Parameter Store — including SecureString parameters with decryption — and Secrets Manager. The `AWSSSM.Provider` sibling package works against it through the same `ConfigureSsmConfig` hook:
+
+```csharp
+using AWSSSM.Provider;
+
+builder.AddSsmParameters(
+    credentials: new BasicAWSCredentials("test", "test"),
+    configurator: options =>
+    {
+        options.ConfigureSsmConfig = config =>
+        {
+            config.ServiceURL = "http://localhost:4566";
+            config.AuthenticationRegion = "us-east-1";
+        };
+    });
+```
+
+This repository's own SSM integration test suite (`tests/AWSSSM.Provider.Tests/Integration/`) runs against Floci in a Testcontainers container, exercising real wire-protocol behavior: key mapping, JSON flattening, SecureString decryption, pagination, and polling reload. The tests skip automatically when Docker isn't available.
+
+## Sibling package target framework matrix
+
+`AWSSSM.Provider` (SSM Parameter Store) targets `netstandard2.0`, `net8.0`, `net9.0`, `net10.0`, and `net11.0`.

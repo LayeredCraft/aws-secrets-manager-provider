@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.Runtime;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
+using AWSConfiguration.Core.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using LayeredCraft.StructuredLogging;
 
 namespace AWSSecretsManager.Provider.Internal;
 
@@ -18,6 +17,8 @@ namespace AWSSecretsManager.Provider.Internal;
 /// </summary>
 public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDisposable
 {
+    private readonly PollingEngine _engine;
+
     /// <summary>
     /// Gets the configuration options for the secrets manager provider.
     /// </summary>
@@ -27,11 +28,6 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     /// Gets the AWS Secrets Manager client used to retrieve secrets.
     /// </summary>
     public IAmazonSecretsManager Client { get; }
-
-    private readonly ILogger? _logger;
-    private HashSet<(string, string?)> _loadedValues = new();
-    private Task? _pollingTask;
-    private CancellationTokenSource? _cancellationToken;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SecretsManagerConfigurationProvider"/> class.
@@ -44,7 +40,22 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     {
         Options = options ?? throw new ArgumentNullException(nameof(options));
         Client = client ?? throw new ArgumentNullException(nameof(client));
-        _logger = logger;
+
+        _engine = new PollingEngine(
+            logger,
+            resourceDescription: "secrets from AWS Secrets Manager",
+            resourceNoun: "secret",
+            duplicateKeyOptionsHint: "Adjust the KeyGenerator or SecretFilter options so each secret maps to a unique key.",
+            fetchConfiguration: FetchConfigurationAsync,
+            pollingInterval: () => Options.PollingInterval,
+            commitData: (data, publishChange) =>
+            {
+                Data = data;
+                if (publishChange)
+                {
+                    OnReload();
+                }
+            });
     }
 
     /// <summary>
@@ -52,21 +63,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     /// </summary>
     public override void Load()
     {
-        // Note: Using GetAwaiter().GetResult() is required here because the ConfigurationProvider.Load()
-        // method must be synchronous, but AWS SDK operations are async-only. This follows the same
-        // pattern used by other configuration providers that integrate with async-only services.
-        // The ConfigureAwait(false) helps prevent deadlocks in synchronization contexts.
-        if (_logger != null)
-        {
-            _logger.Time("Loading secrets from AWS Secrets Manager", () =>
-            {
-                LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-            });
-        }
-        else
-        {
-            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-        }
+        _engine.Load();
     }
 
     /// <summary>
@@ -76,201 +73,34 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
     /// <returns>A task representing the asynchronous reload operation.</returns>
     public Task ForceReloadAsync(CancellationToken cancellationToken)
     {
-        return ReloadAsync(cancellationToken);
+        return _engine.ForceReloadAsync(cancellationToken);
     }
 
-    private async Task LoadAsync()
+    /// <summary>
+    /// Releases all resources used by the provider, stopping any active polling.
+    /// </summary>
+    public void Dispose()
     {
-        _loadedValues = Options.UseBatchFetch switch
+        _engine.Dispose();
+    }
+
+    private void AddConfigurationValue(HashSet<(string, string?)> configuration, string key, string? value)
+    {
+        _engine.AddConfigurationValue(configuration, key, value);
+    }
+
+    /// <summary>
+    /// Fetches the current configuration values, using batch fetching when enabled.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A set of configuration key/value pairs.</returns>
+    private async Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
+    {
+        return Options.UseBatchFetch switch
         {
-            true => await FetchConfigurationBatchAsync(default).ConfigureAwait(false),
-            _ => await FetchConfigurationAsync(default).ConfigureAwait(false)
+            true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
+            _ => await FetchSingleSecretsAsync(cancellationToken).ConfigureAwait(false)
         };
-
-        SetData(_loadedValues, triggerReload: false);
-
-
-        if (Options.PollingInterval.HasValue)
-        {
-            _cancellationToken = new CancellationTokenSource();
-            _pollingTask = PollForChangesAsync(Options.PollingInterval.Value, _cancellationToken.Token);
-        }
-    }
-
-    private async Task PollForChangesAsync(TimeSpan interval, CancellationToken cancellationToken)
-    {
-        _logger?.Information("Starting secret polling with interval {PollingInterval}", interval);
-        
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
-            try
-            {
-                _logger?.Debug("Polling for secret changes");
-                await ReloadAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected during shutdown - break without logging
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger?.Warning(ex, "Error during secret polling, will retry in {PollingInterval}", interval);
-            }
-        }
-        
-        _logger?.Information("Secret polling stopped");
-    }
-
-    private async Task ReloadAsync(CancellationToken cancellationToken)
-    {
-        if (_logger != null)
-        {
-            await _logger.TimeAsync("Reloading secrets from AWS Secrets Manager", async () =>
-            {
-                var oldValues = _loadedValues;
-
-                var newValues = Options.UseBatchFetch switch
-                {
-                    true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
-                    _ => await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false)
-                };
-
-                if (!oldValues.SetEquals(newValues))
-                {
-                    _loadedValues = newValues;
-                    SetData(_loadedValues, triggerReload: true);
-                    
-                    var addedCount = newValues.Except(oldValues).Count();
-                    var removedCount = oldValues.Except(newValues).Count();
-                    _logger.Information("Secret changes detected and reloaded. {AddedCount} added, {RemovedCount} removed",
-                        addedCount, removedCount);
-                }
-                else
-                {
-                    _logger.Debug("No secret changes detected");
-                }
-            });
-        }
-        else
-        {
-            var oldValues = _loadedValues;
-
-            var newValues = Options.UseBatchFetch switch
-            {
-                true => await FetchConfigurationBatchAsync(cancellationToken).ConfigureAwait(false),
-                _ => await FetchConfigurationAsync(cancellationToken).ConfigureAwait(false)
-            };
-
-            if (!oldValues.SetEquals(newValues))
-            {
-                _loadedValues = newValues;
-                SetData(_loadedValues, triggerReload: true);
-            }
-        }
-    }
-
-    private static bool TryParseJson(string data, out JsonElement? jsonElement)
-    {
-        jsonElement = null;
-
-        data = data.TrimStart();
-        var firstChar = data.FirstOrDefault();
-
-        if (firstChar != '[' && firstChar != '{')
-        {
-            return false;
-        }
-
-        try
-        {
-            using var jsonDocument = JsonDocument.Parse(data);
-            //  https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-use-dom-utf8jsonreader-utf8jsonwriter?pivots=dotnet-6-0#jsondocument-is-idisposable
-            //  Its recommended to return the clone of the root element as the json document will be disposed
-            jsonElement = jsonDocument.RootElement.Clone();
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-    private static IEnumerable<(string key, string? value)> ExtractValues(JsonElement? jsonElement, string prefix)
-    {
-        if (jsonElement == null)
-        {
-            yield break;
-        }
-        var element = jsonElement.Value;
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.Array:
-            {
-                var currentIndex = 0;
-                foreach (var el in element.EnumerateArray())
-                {
-                    var secretKey = $"{prefix}{ConfigurationPath.KeyDelimiter}{currentIndex}";
-                    foreach (var (key, value) in ExtractValues(el, secretKey))
-                    {
-                        yield return (key, value);
-                    }
-                    currentIndex++;
-                }
-                break;
-            }
-            case JsonValueKind.Number:
-            {
-                var value = element.GetRawText();
-                yield return (prefix, value);
-                break;
-            }
-            case JsonValueKind.String:
-            {
-                var value = element.GetString() ?? "";
-                yield return (prefix, value);
-                break;
-            }
-            case JsonValueKind.True:
-            case JsonValueKind.False:
-            {
-                var value = element.GetBoolean();
-                yield return (prefix, value.ToString());
-                break;
-            }
-            case JsonValueKind.Object:
-            {
-                foreach (var property in element.EnumerateObject())
-                {
-                    var secretKey = $"{prefix}{ConfigurationPath.KeyDelimiter}{property.Name}";
-                    foreach (var (key, value) in ExtractValues(property.Value, secretKey))
-                    {
-                        yield return (key, value);
-                    }
-                }
-                break;
-            }
-            case JsonValueKind.Null:
-            {
-                yield return (prefix, null);
-                break;
-            }
-            case JsonValueKind.Undefined:
-            default:
-            {
-                throw new FormatException("unsupported json token");
-            }
-        }
-    }
-
-    private void SetData(IEnumerable<(string, string?)> values, bool triggerReload)
-    {
-        Data = values.ToDictionary<(string, string?), string, string?>(x => x.Item1, x => x.Item2, StringComparer.InvariantCultureIgnoreCase);
-        if (triggerReload)
-        {
-            OnReload();
-        }
     }
 
     private async Task<IReadOnlyList<SecretListEntry>> FetchAllSecretsAsync(CancellationToken cancellationToken)
@@ -297,7 +127,7 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
         return result;
     }
 
-    private async Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
+    private async Task<HashSet<(string, string?)>> FetchSingleSecretsAsync(CancellationToken cancellationToken)
     {
         var secrets = await FetchAllSecretsAsync(cancellationToken).ConfigureAwait(false);
         var configuration = new HashSet<(string, string?)>();
@@ -335,21 +165,21 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                 if (secretString is null)
                     continue;
 
-                if (TryParseJson(secretString, out var jElement))
+                if (JsonFlattener.TryParseJson(secretString, out var jElement))
                 {
                     // [MaybeNullWhen(false)] attribute is available in .net standard since version 2.1
-                    var values = ExtractValues(jElement!, secretName);
+                    var values = JsonFlattener.ExtractValues(jElement!, secretName);
 
                     foreach (var (key, value) in values)
                     {
                         var configurationKey = Options.KeyGenerator(secretEntry, key);
-                        configuration.Add((configurationKey, value));
+                        AddConfigurationValue(configuration, configurationKey, value);
                     }
                 }
                 else
                 {
                     var configurationKey = Options.KeyGenerator(secretEntry, secretName);
-                    configuration.Add((configurationKey, secretString));
+                    AddConfigurationValue(configuration, configurationKey, secretString);
                 }
             }
             catch (ResourceNotFoundException e)
@@ -434,21 +264,21 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
                     if (secretString is null)
                         continue;
 
-                    if (TryParseJson(secretString, out var jElement))
+                    if (JsonFlattener.TryParseJson(secretString, out var jElement))
                     {
                         // [MaybeNullWhen(false)] attribute is available in .net standard since version 2.1
-                        var values = ExtractValues(jElement!, secretName);
+                        var values = JsonFlattener.ExtractValues(jElement!, secretName);
 
                         foreach (var (key, value) in values)
                         {
                             var configurationKey = Options.KeyGenerator(secretEntry, key);
-                            configuration.Add((configurationKey, value));
+                            AddConfigurationValue(configuration, configurationKey, value);
                         }
                     }
                     else
                     {
                         var configurationKey = Options.KeyGenerator(secretEntry, secretName);
-                        configuration.Add((configurationKey, secretString));
+                        AddConfigurationValue(configuration, configurationKey, secretString);
                     }
 
                 }
@@ -494,23 +324,5 @@ public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDispo
             };
         }).ToList();
         return set;
-    }
-
-    /// <summary>
-    /// Releases all resources used by the <see cref="SecretsManagerConfigurationProvider"/>.
-    /// </summary>
-    public void Dispose()
-    {
-        _cancellationToken?.Cancel();
-        _cancellationToken = null;
-
-        try
-        {
-            _pollingTask?.GetAwaiter().GetResult();
-        }
-        catch (TaskCanceledException)
-        {
-        }
-        _pollingTask = null;
     }
 }

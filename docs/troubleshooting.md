@@ -7,18 +7,18 @@ Check, in order:
 1. **Is it a binary secret?** Secrets stored with only `SecretBinary` (no `SecretString`) are silently skipped — no key is created, no error is raised. This library doesn't decode binary secret values. If you need a binary payload, store it as a base64 string inside a `SecretString` instead.
 2. **Is `SecretFilter` excluding it?** A custom `SecretFilter` predicate that returns `false` for this secret will silently exclude it (again, no error).
 3. **Is it outside `AcceptedSecretArns`?** If `AcceptedSecretArns` is non-empty, only those exact entries are fetched — `ListSecrets`/`ListSecretsFilters` are not consulted at all in that mode.
-4. **Does your IAM policy actually grant access to it?** `IgnoreMissingValues` only suppresses a *missing-secret* failure (`ResourceNotFoundException`) — it does **not** swallow an IAM/authorization failure (e.g. `AccessDeniedException`), which is always raised as an exception regardless of `IgnoreMissingValues`. If a secret is silently absent from configuration, a permissions problem on it is not the explanation — check the other candidates in this list first, and confirm access separately (e.g. via the AWS CLI) rather than by toggling `IgnoreMissingValues`.
+4. **Does your IAM policy actually grant access to it?** `IgnoreMissingValues` only suppresses a _missing-secret_ failure (`ResourceNotFoundException`) — it does **not** swallow an IAM/authorization failure (e.g. `AccessDeniedException`), which is always raised as an exception regardless of `IgnoreMissingValues`. If a secret is silently absent from configuration, a permissions problem on it is not the explanation — check the other candidates in this list first, and confirm access separately (e.g. via the AWS CLI) rather than by toggling `IgnoreMissingValues`.
 
 ## `MissingSecretValueException`
 
 Thrown when a specific secret can't be retrieved (typically `ResourceNotFoundException` from AWS) and `IgnoreMissingValues` is `false`. It carries `SecretName` and `SecretArn` so you can identify which secret failed. Fixes: correct the ARN/name, verify the secret exists in the target account/region, verify IAM permissions, or set `IgnoreMissingValues = true` if a missing secret should be tolerated rather than fail startup.
 
-With `UseBatchFetch = true`, whether this exception arrives directly or wrapped depends on *how* AWS reported the failure:
+With `UseBatchFetch = true`, whether this exception arrives directly or wrapped depends on _how_ AWS reported the failure:
 
 - If AWS returns the missing-secret failure as a per-secret error inside the batch response (the normal case), it's wrapped inside the `AggregateException` described above — catch `AggregateException` and check `ex.InnerExceptions.OfType<MissingSecretValueException>()`.
 - If the `BatchGetSecretValueAsync` call itself throws `ResourceNotFoundException` as a request-level failure (rather than returning it in the response body), the provider rethrows `MissingSecretValueException` **directly** — and this path is **not** gated by `IgnoreMissingValues` at all, unlike the single-fetch path.
 
-Catch both `MissingSecretValueException` directly and `AggregateException` (inspecting `InnerExceptions`) to handle *missing-secret* failures specifically. This is not exhaustive for every batch-mode failure — an authorization error, throttling, or a service error from `ListSecretsAsync`/`BatchGetSecretValueAsync` itself is only caught if it matches `ResourceNotFoundException`; any other AWS exception type propagates directly, uncaught by either shape above.
+Catch both `MissingSecretValueException` directly and `AggregateException` (inspecting `InnerExceptions`) to handle _missing-secret_ failures specifically. This is not exhaustive for every batch-mode failure — an authorization error, throttling, or a service error from `ListSecretsAsync`/`BatchGetSecretValueAsync` itself is only caught if it matches `ResourceNotFoundException`; any other AWS exception type propagates directly, uncaught by either shape above.
 
 ## `AggregateException` from batch fetch
 
@@ -26,14 +26,14 @@ In batch mode (`UseBatchFetch = true`), any AWS-reported error for any secret in
 
 ## "My JSON secret isn't being flattened into nested keys"
 
-The provider only attempts JSON parsing if the secret value's first non-whitespace character is `{` or `[`, and only treats it as JSON if it then actually parses. If your value is meant to be JSON but doesn't start with one of those characters (e.g. it has a byte-order mark, or leading text), it will be stored as one plain-string key instead. Conversely, a string that merely *starts* with `{` or `[` but isn't valid JSON (e.g. `"{not real json}"`) safely falls back to plain-string storage rather than throwing — this is intentional, not a bug to route around.
+The provider only attempts JSON parsing if the secret value's first non-whitespace character is `{` or `[`, and only treats it as JSON if it then actually parses. If your value is meant to be JSON but doesn't start with one of those characters (e.g. it has a byte-order mark, or leading text), it will be stored as one plain-string key instead. Conversely, a string that merely _starts_ with `{` or `[` but isn't valid JSON (e.g. `"{not real json}"`) safely falls back to plain-string storage rather than throwing — this is intentional, not a bug to route around.
 
 ## "Polling is enabled but changes aren't being picked up"
 
 - Confirm `PollingInterval` is actually set (it's `null`/disabled by default).
 - The provider only fires a reload notification when the fetched key/value set actually differs from what it currently holds — if the secret's value is unchanged between polls, that's correctly treated as a no-op, not a missed reload.
 - Most poll failures are logged as warnings and do not stop the polling loop — check logs (you need a logging overload enabled; see [Getting Started](getting-started.md)) for recurring warnings if reload seems to have stopped. Two exceptions, both silent (no warning logged): an `OperationCanceledException` (from any source, not only real shutdown) breaks the polling loop permanently; and an invalid `PollingInterval` (negative, other than `Timeout.InfiniteTimeSpan`) faults the polling task immediately via `ArgumentOutOfRangeException` before it ever reaches the per-reload error handling. If polling has stopped with nothing in the logs at all, one of these is the likely cause, not a suppressed failure.
-- Did you call `Load()` directly more than once? Each call starts a new polling task without stopping any previous one — the configuration pipeline calls `Load()` exactly once; use `ForceReloadAsync` for manual reloads instead (see [Advanced Usage](advanced.md#forcing-a-reload-manually)).
+- Did you call `Load()` directly more than once? Each call stops any existing polling loop and starts a new one (no leak, but the interval clock resets), while the configuration pipeline calls `Load()` exactly once — use `ForceReloadAsync` for manual reloads instead, since it refetches without restarting the polling loop (see [Advanced Usage](advanced.md#forcing-a-reload-manually)).
 
 ## Credential / region resolution failures
 

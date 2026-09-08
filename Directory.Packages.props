@@ -3,7 +3,9 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="AWS SDK">
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.3" />
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.11" />
+    <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.103.7" />
   </ItemGroup>
   <ItemGroup Label="LayeredCraft">
     <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.2.4" />
@@ -13,11 +15,21 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="[9.0.18, 10.0.0)" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="[9.0.18, 10.0.0)" />
   </ItemGroup>
+  <ItemGroup Label="Microsoft Logging (TFM pinned)" Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="[8.0.3, 9.0.0)" />
+  </ItemGroup>
+  <ItemGroup Label="Microsoft Logging (TFM pinned)" Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="[10.0.10, 11.0.0)" />
+  </ItemGroup>
+  <ItemGroup Label="Microsoft Logging (TFM pinned)" Condition="'$(TargetFramework)' == 'net11.0'">
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="[11.0.0-preview.6.26359.118, 12.0.0-a)" />
+  </ItemGroup>
   <!-- Microsoft.Extensions.* packages ship parallel stable and preview build lines.
        Pin each per-TargetFramework with bounded ranges so Dependabot can raise
        lower bounds without crossing into the next major/preview line. -->
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[8.0.0, 9.0.0)" />
+    <PackageVersion Include="System.Text.Json" Version="[8.0.6, 9.0.0)" />
   </ItemGroup>
   <ItemGroup Label="Microsoft (TFM pinned)" Condition="'$(TargetFramework)' == 'net9.0'">
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[9.0.18, 10.0.0)" />
@@ -38,6 +50,7 @@
     <PackageVersion Include="Compono.XunitV3" Version="0.8.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.10.0" />
+    <PackageVersion Include="Testcontainers.Floci" Version="4.15.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.0" />
   </ItemGroup>

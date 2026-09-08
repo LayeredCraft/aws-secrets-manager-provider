@@ -1,27 +1,27 @@
 using System;
 using Amazon;
 using Amazon.Runtime;
-using Amazon.SecretsManager;
+using Amazon.SimpleSystemsManagement;
 using AWSConfiguration.Core.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace AWSSecretsManager.Provider.Internal;
+namespace AWSSSM.Provider.Internal;
 
 /// <summary>
-/// Configuration source for AWS Secrets Manager without logger support.
+/// Configuration source for AWS SSM Parameter Store without logger support.
 /// </summary>
-public class SecretsManagerConfigurationSource : IConfigurationSource
+public class SsmConfigurationSource : IConfigurationSource
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="SecretsManagerConfigurationSource"/> class.
+    /// Initializes a new instance of the <see cref="SsmConfigurationSource"/> class.
     /// </summary>
     /// <param name="credentials">The AWS credentials to use for authentication.</param>
     /// <param name="options">The configuration options.</param>
-    public SecretsManagerConfigurationSource(AWSCredentials? credentials = null, SecretsManagerConfigurationProviderOptions? options = null)
+    public SsmConfigurationSource(AWSCredentials? credentials = null, SsmConfigurationProviderOptions? options = null)
     {
         Credentials = credentials;
-        Options = options ?? new SecretsManagerConfigurationProviderOptions();
+        Options = options ?? new SsmConfigurationProviderOptions();
     }
 
     /// <summary>
@@ -35,9 +35,9 @@ public class SecretsManagerConfigurationSource : IConfigurationSource
     public RegionEndpoint? Region { get; set; }
 
     /// <summary>
-    /// Gets the configuration options for the secrets manager provider.
+    /// Gets the configuration options for the SSM provider.
     /// </summary>
-    public SecretsManagerConfigurationProviderOptions Options { get; }
+    public SsmConfigurationProviderOptions Options { get; }
 
     /// <summary>
     /// Builds the configuration provider.
@@ -46,35 +46,35 @@ public class SecretsManagerConfigurationSource : IConfigurationSource
     /// <returns>The configuration provider instance.</returns>
     public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
-        var client = AwsClientFactory.Create<IAmazonSecretsManager, AmazonSecretsManagerConfig>(
+        var client = AwsClientFactory.Create<IAmazonSimpleSystemsManagement, AmazonSimpleSystemsManagementConfig>(
             customClientFactory: Options.CreateClient,
             credentials: Credentials,
             region: Region,
-            configureClient: Options.ConfigureSecretsManagerConfig,
-            createDefaultClient: clientConfig => new AmazonSecretsManagerClient(clientConfig),
-            createClientWithCredentials: (credentials, clientConfig) => new AmazonSecretsManagerClient(credentials, clientConfig));
+            configureClient: Options.ConfigureSsmConfig,
+            createDefaultClient: clientConfig => new AmazonSimpleSystemsManagementClient(clientConfig),
+            createClientWithCredentials: (credentials, clientConfig) => new AmazonSimpleSystemsManagementClient(credentials, clientConfig));
 
         // No automatic logger resolution - use explicit logger overloads if logging is needed
-        return new SecretsManagerConfigurationProvider(client, Options, logger: null);
+        return new SsmConfigurationProvider(client, Options, logger: null);
     }
 }
 
 /// <summary>
 /// Configuration source that supports explicit logger injection
 /// </summary>
-public class SecretsManagerConfigurationSourceWithLogger : IConfigurationSource
+public class SsmConfigurationSourceWithLogger : IConfigurationSource
 {
-    private readonly SecretsManagerConfigurationProviderOptions _options;
+    private readonly SsmConfigurationProviderOptions _options;
     private readonly ILogger _logger;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SecretsManagerConfigurationSourceWithLogger"/> class.
+    /// Initializes a new instance of the <see cref="SsmConfigurationSourceWithLogger"/> class.
     /// </summary>
     /// <param name="credentials">The AWS credentials to use for authentication.</param>
     /// <param name="options">The configuration options.</param>
     /// <param name="logger">The logger instance for diagnostic information.</param>
     /// <exception cref="ArgumentNullException">Thrown when options or logger are null.</exception>
-    public SecretsManagerConfigurationSourceWithLogger(AWSCredentials? credentials, SecretsManagerConfigurationProviderOptions options, ILogger logger)
+    public SsmConfigurationSourceWithLogger(AWSCredentials? credentials, SsmConfigurationProviderOptions options, ILogger logger)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -98,14 +98,14 @@ public class SecretsManagerConfigurationSourceWithLogger : IConfigurationSource
     /// <returns>The configuration provider instance.</returns>
     public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
-        var client = AwsClientFactory.Create<IAmazonSecretsManager, AmazonSecretsManagerConfig>(
+        var client = AwsClientFactory.Create<IAmazonSimpleSystemsManagement, AmazonSimpleSystemsManagementConfig>(
             customClientFactory: _options.CreateClient,
             credentials: Credentials,
             region: Region,
-            configureClient: _options.ConfigureSecretsManagerConfig,
-            createDefaultClient: clientConfig => new AmazonSecretsManagerClient(clientConfig),
-            createClientWithCredentials: (credentials, clientConfig) => new AmazonSecretsManagerClient(credentials, clientConfig));
+            configureClient: _options.ConfigureSsmConfig,
+            createDefaultClient: clientConfig => new AmazonSimpleSystemsManagementClient(clientConfig),
+            createClientWithCredentials: (credentials, clientConfig) => new AmazonSimpleSystemsManagementClient(credentials, clientConfig));
 
-        return new SecretsManagerConfigurationProvider(client, _options, _logger);
+        return new SsmConfigurationProvider(client, _options, _logger);
     }
 }

@@ -53,19 +53,19 @@ builder.Configuration.AddSecretsManager(loggerFactory,
 
 ## Options quick-reference (`SecretsManagerConfigurationProviderOptions`)
 
-| Option | Purpose |
-|---|---|
-| `AcceptedSecretArns` (`List<string>`) | Explicit allowlist (full/partial ARN or name). Non-empty → `ListSecrets` is skipped entirely; only these are fetched. Prefer this for least-privilege IAM. |
-| `SecretFilter` (`Func<SecretListEntry, bool>`) | Client-side predicate over each listed/accepted secret before fetching its value. |
-| `ListSecretsFilters` (`List<Filter>`) | Passed straight through as `ListSecretsRequest.Filters` — AWS-side narrowing. |
-| `KeyGenerator` (`Func<SecretListEntry, string, string>`) | Rewrites every flattened configuration key, default identity. |
-| `ConfigureSecretValueRequest` | Customizes `GetSecretValueRequest`. Only used when `UseBatchFetch=false`. |
-| `ConfigureBatchSecretValueRequest` | Customizes `BatchGetSecretValueRequest`. Only used when `UseBatchFetch=true`. |
-| `ConfigureSecretsManagerConfig` | Customizes `AmazonSecretsManagerConfig` before client creation (timeouts, LocalStack `ServiceURL`). Ignored if `CreateClient` is set. |
-| `CreateClient` (`Func<IAmazonSecretsManager>?`) | Full override of client construction; bypasses region/credentials/`ConfigureSecretsManagerConfig` entirely. |
-| `PollingInterval` (`TimeSpan?`) | `null` (default) = load once, no polling. Set to enable background reload. |
-| `UseBatchFetch` (`bool`) | `false` (default). `true` uses `BatchGetSecretValue`, chunks of ≤20, requires `secretsmanager:BatchGetSecretValue` IAM permission. |
-| `IgnoreMissingValues` (`bool`) | `false` (default). Suppresses missing-secret errors only — see batch-error nuance below. |
+| Option                                                   | Purpose                                                                                                                                                    |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AcceptedSecretArns` (`List<string>`)                    | Explicit allowlist (full/partial ARN or name). Non-empty → `ListSecrets` is skipped entirely; only these are fetched. Prefer this for least-privilege IAM. |
+| `SecretFilter` (`Func<SecretListEntry, bool>`)           | Client-side predicate over each listed/accepted secret before fetching its value.                                                                          |
+| `ListSecretsFilters` (`List<Filter>`)                    | Passed straight through as `ListSecretsRequest.Filters` — AWS-side narrowing.                                                                              |
+| `KeyGenerator` (`Func<SecretListEntry, string, string>`) | Rewrites every flattened configuration key, default identity.                                                                                              |
+| `ConfigureSecretValueRequest`                            | Customizes `GetSecretValueRequest`. Only used when `UseBatchFetch=false`.                                                                                  |
+| `ConfigureBatchSecretValueRequest`                       | Customizes `BatchGetSecretValueRequest`. Only used when `UseBatchFetch=true`.                                                                              |
+| `ConfigureSecretsManagerConfig`                          | Customizes `AmazonSecretsManagerConfig` before client creation (timeouts, LocalStack `ServiceURL`). Ignored if `CreateClient` is set.                      |
+| `CreateClient` (`Func<IAmazonSecretsManager>?`)          | Full override of client construction; bypasses region/credentials/`ConfigureSecretsManagerConfig` entirely.                                                |
+| `PollingInterval` (`TimeSpan?`)                          | `null` (default) = load once, no polling. Set to enable background reload.                                                                                 |
+| `UseBatchFetch` (`bool`)                                 | `false` (default). `true` uses `BatchGetSecretValue`, chunks of ≤20, requires `secretsmanager:BatchGetSecretValue` IAM permission.                         |
+| `IgnoreMissingValues` (`bool`)                           | `false` (default). Suppresses missing-secret errors only — see batch-error nuance below.                                                                   |
 
 Don't recommend `AcceptedSecretArns` and `ListSecretsFilters` together for the same result set — if `AcceptedSecretArns` is non-empty, no `ListSecrets` call happens at all, so `ListSecretsFilters` has nothing to apply to.
 
@@ -85,16 +85,16 @@ Default (no `credentials`/`region` passed): resolved via the standard AWS SDK fo
 ## Batch fetch & polling (condensed — full depth in the docs site)
 
 - `UseBatchFetch=true`: chunks of ≤20 secrets per `BatchGetSecretValue` call; AWS returns full randomized-suffix ARNs even for short-name/partial-ARN requests, but the provider matches responses back correctly on its own — no special handling needed by the caller.
-- **`IgnoreMissingValues` in batch mode only suppresses errors when EVERY error in that batch is a missing-secret error.** A single non-missing error (e.g. decryption failure) alongside missing-secret errors still throws an `AggregateException`. Do not tell a user `IgnoreMissingValues=true` makes batch fetch fully fault-tolerant — and note this whole mechanism only covers errors AWS reports *inside* the batch response; a request-level failure (auth error, throttling, service error) from `ListSecretsAsync`/`BatchGetSecretValueAsync` itself propagates directly and is caught by neither `MissingSecretValueException` nor `AggregateException` handling.
+- **`IgnoreMissingValues` in batch mode only suppresses errors when EVERY error in that batch is a missing-secret error.** A single non-missing error (e.g. decryption failure) alongside missing-secret errors still throws an `AggregateException`. Do not tell a user `IgnoreMissingValues=true` makes batch fetch fully fault-tolerant — and note this whole mechanism only covers errors AWS reports _inside_ the batch response; a request-level failure (auth error, throttling, service error) from `ListSecretsAsync`/`BatchGetSecretValueAsync` itself propagates directly and is caught by neither `MissingSecretValueException` nor `AggregateException` handling.
 - `PollingInterval` set → background loop; reload (`IChangeToken`/`OnReload`) only fires when the fetched key set actually differs from before; most poll failures are logged as warnings and do not stop the loop — **except** `OperationCanceledException` (always breaks the loop silently, even when not from actual shutdown) and an invalid `PollingInterval` (negative, other than `Timeout.InfiniteTimeSpan` — faults the polling task immediately, also silently). Don't claim polling survives every failure type.
-- `ForceReloadAsync(CancellationToken)` on `SecretsManagerConfigurationProvider` triggers the same fetch-diff-reload logic on demand, and does **not** start an additional polling loop (unlike calling `Load()` directly again, which does — and which `Dispose()` won't fully clean up, since it only cancels the most recently started loop). Never recommend calling `Load()` directly more than once; use `ForceReloadAsync` for manual reload.
+- `ForceReloadAsync(CancellationToken)` on `SecretsManagerConfigurationProvider` triggers the same fetch-diff-reload logic on demand, and does **not** start an additional polling loop. Calling `Load()` again while polling is enabled stops the existing polling loop before starting a new one (no leak, but the interval clock resets); `Dispose()` cancels the tracked loop. Prefer `ForceReloadAsync` for manual reload — it refetches without touching the polling loop at all.
 
 ## Common mistakes to avoid
 
 - Don't claim logging works without an explicit `ILogger`/`ILoggerFactory` overload.
 - Don't claim binary secrets are decoded — they're skipped.
 - Don't claim `IgnoreMissingValues` suppresses all batch-mode errors — only all-missing-secret batches.
-- Don't recommend exposing configuration *values* (not just key names) through a diagnostic/health endpoint.
+- Don't recommend exposing configuration _values_ (not just key names) through a diagnostic/health endpoint.
 - Don't invent options that don't exist on `SecretsManagerConfigurationProviderOptions` — the 11 listed above are the complete set.
 - Don't assume this package handles secret rotation itself — rotation is an AWS Secrets Manager concept; this package only re-reads via polling/`ForceReloadAsync`.
 

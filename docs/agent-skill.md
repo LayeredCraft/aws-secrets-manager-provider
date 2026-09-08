@@ -39,4 +39,14 @@ This works with any host that implements the open [Agent Skills specification](h
 - The skill is evaluated against a small suite of realistic prompts in `skills/aws-secrets-manager-provider/evals/evals.json`, following the [Agent Skills evaluation methodology](https://agentskills.io/skill-creation/evaluating-skills) — covering normal usage, an advanced multi-option scenario, edge cases (JSON flattening, binary secrets), and scenarios chosen specifically because generic knowledge tends to get them wrong.
 - `evals/evals.json` is schema-validated in CI; actual with-skill/without-skill grading is a manual/local process, run when the skill is materially revised.
 
+## Sibling skill: aws-ssm-provider
+
+A matching skill ships for the `AWSSSM.Provider` (SSM Parameter Store) sibling package at [`skills/aws-ssm-provider/`](https://github.com/LayeredCraft/aws-secrets-manager-provider/tree/main/skills/aws-ssm-provider), with its own evals in `skills/aws-ssm-provider/evals/evals.json`. Install it the same way:
+
+```bash
+npx skills add LayeredCraft/aws-secrets-manager-provider
+```
+
+See the [SSM Parameter Store docs](ssm-parameter-store.md) for the package it describes.
+
 For everything the skill intentionally keeps brief, it points back to this documentation site — see [Configuration & Secret Mapping](configuration.md), [Advanced Usage](advanced.md), and [Troubleshooting & FAQ](troubleshooting.md) for full depth.

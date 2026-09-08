@@ -1,20 +1,20 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <LangVersion>default</LangVersion>
-	<Nullable>enable</Nullable>  
+	<Nullable>enable</Nullable>
     <TargetFrameworks>netstandard2.0;net8.0;net9.0;net10.0;net11.0</TargetFrameworks>
-    <PackageId>AWSSecretsManager.Provider</PackageId>
-    <Title>AWSSecretsManager.Provider</Title>
-    <Description>An AWS Secrets Manager-backed configuration provider for .NET applications using Microsoft.Extensions.Configuration.</Description>
-    <PackageTags>aws;secretsmanager;configuration;secrets;provider;dotnet;extension</PackageTags>
+    <PackageId>AWSSSM.Provider</PackageId>
+    <Title>AWSSSM.Provider</Title>
+    <Description>An AWS SSM Parameter Store-backed configuration provider for .NET applications using Microsoft.Extensions.Configuration.</Description>
+    <PackageTags>aws;ssm;parameterstore;configuration;provider;dotnet;extension</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.Core" />
-    <PackageReference Include="AWSSDK.SecretsManager" />
+    <PackageReference Include="AWSSDK.SimpleSystemsManagement" />
     <PackageReference Include="LayeredCraft.StructuredLogging" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
@@ -27,8 +27,8 @@
     <Compile Include="..\AWSConfiguration.Core\Internal\**\*.cs" LinkBase="Internal\AWSConfiguration.Core" />
   </ItemGroup>
 
-    <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="" Visible="false" />
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
     <None Include="..\..\icon.png" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
 </Project>
