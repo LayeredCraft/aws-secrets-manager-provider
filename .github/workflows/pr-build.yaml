@@ -60,7 +60,7 @@ jobs:
       - name: Code Coverage Summary
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
-          filename: coverage/*.cobertura.xml
+          filename: TestResults/coverage/*.cobertura.xml
           badge: true
           fail_below_min: true
           format: markdown
@@ -75,4 +75,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-reports
-          path: coverage/*.cobertura.xml
+          path: TestResults/coverage/*.cobertura.xml
