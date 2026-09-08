@@ -58,6 +58,14 @@ public class SsmConfigurationProvider : PollingConfigurationProvider
     /// <returns>A set of configuration key/value pairs.</returns>
     protected override async Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
     {
+        // Normalize once so the AWS request and the key mapping agree even when
+        // the caller configures a trailing slash (e.g. "/MyApp/").
+        var normalizedPath = (Options.Path ?? "/").TrimEnd('/');
+        if (normalizedPath.Length == 0)
+        {
+            normalizedPath = "/";
+        }
+
         var configuration = new HashSet<(string, string?)>();
         var response = default(GetParametersByPathResponse);
 
@@ -65,11 +73,14 @@ public class SsmConfigurationProvider : PollingConfigurationProvider
         {
             var request = new GetParametersByPathRequest
             {
-                Path = Options.Path,
+                Path = normalizedPath,
                 Recursive = Options.Recursive,
-                WithDecryption = Options.WithDecryption,
-                NextToken = response?.NextToken
+                WithDecryption = Options.WithDecryption
             };
+
+            Options.ConfigureGetParametersByPathRequest?.Invoke(request);
+
+            request.NextToken = response?.NextToken;
 
             response = await Client.GetParametersByPathAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -83,18 +94,18 @@ public class SsmConfigurationProvider : PollingConfigurationProvider
                 if (value is null)
                     continue;
 
-                var configurationKey = Options.KeyGenerator(parameter.Name, Options.Path);
+                var baseKey = SsmConfigurationProviderOptions.DefaultKeyGenerator(parameter.Name, normalizedPath);
 
                 if (JsonFlattener.TryParseJson(value, out var jElement))
                 {
-                    foreach (var (key, item) in JsonFlattener.ExtractValues(jElement!, configurationKey))
+                    foreach (var (key, item) in JsonFlattener.ExtractValues(jElement!, baseKey))
                     {
-                        AddConfigurationValue(configuration, key, item);
+                        AddConfigurationValue(configuration, Options.KeyGenerator(key, normalizedPath), item);
                     }
                 }
                 else
                 {
-                    AddConfigurationValue(configuration, configurationKey, value);
+                    AddConfigurationValue(configuration, Options.KeyGenerator(baseKey, normalizedPath), value);
                 }
             }
         } while (response.NextToken != null);

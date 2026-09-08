@@ -59,6 +59,7 @@ public class FakeBackedSsmConfigurationProvider : SsmConfigurationProvider
 public class FakeSsmClient : AmazonSimpleSystemsManagementClient
 {
     private readonly List<GetParametersByPathRequest> _requests = new();
+    private readonly Queue<GetParametersByPathResponse> _responses = new();
     private GetParametersByPathResponse _response = new() { Parameters = new List<Parameter>() };
 
     public FakeSsmClient()
@@ -72,7 +73,21 @@ public class FakeSsmClient : AmazonSimpleSystemsManagementClient
     public void SetupResponse(GetParametersByPathResponse response)
     {
         response.Parameters ??= new List<Parameter>();
+        _responses.Clear();
         _response = response;
+    }
+
+    public void SetupResponses(params GetParametersByPathResponse[] responses)
+    {
+        _responses.Clear();
+
+        foreach (var response in responses)
+        {
+            response.Parameters ??= new List<Parameter>();
+            _responses.Enqueue(response);
+        }
+
+        _response = responses.Length > 0 ? responses[^1] : new() { Parameters = new List<Parameter>() };
     }
 
     public override Task<GetParametersByPathResponse> GetParametersByPathAsync(GetParametersByPathRequest request,
@@ -80,7 +95,7 @@ public class FakeSsmClient : AmazonSimpleSystemsManagementClient
     {
         _requests.Add(request);
 
-        return Task.FromResult(_response);
+        return Task.FromResult(_responses.Count > 0 ? _responses.Dequeue() : _response);
     }
 }
 

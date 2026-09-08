@@ -403,4 +403,117 @@ public class SsmConfigurationProviderTests
 
         ssm.Requests.Count.Should().Be(requestCountAfterDispose);
     }
+
+    [Fact]
+    public void Paginated_responses_are_followed_via_next_token()
+    {
+        var ssm = new FakeSsmClient();
+        var sut = new SsmConfigurationProvider(ssm, new SsmConfigurationProviderOptions(), null);
+
+        ssm.SetupResponses(
+            new GetParametersByPathResponse
+            {
+                Parameters = new List<Parameter>
+                {
+                    new Parameter { Name = "/MyApp/Page1Param", Value = "v1", Type = ParameterType.String }
+                },
+                NextToken = "token-1"
+            },
+            new GetParametersByPathResponse
+            {
+                Parameters = new List<Parameter>
+                {
+                    new Parameter { Name = "/MyApp/Page2Param", Value = "v2", Type = ParameterType.String }
+                }
+            });
+
+        sut.Load();
+
+        ssm.Requests.Should().HaveCount(2);
+        ssm.Requests[0].NextToken.Should().BeNull();
+        ssm.Requests[1].NextToken.Should().Be("token-1");
+
+        sut.Get("MyApp", "Page1Param").Should().Be("v1");
+        sut.Get("MyApp", "Page2Param").Should().Be("v2");
+    }
+
+    [Fact]
+    public void Trailing_slash_in_path_is_normalized()
+    {
+        var ssm = new FakeSsmClient();
+        var options = new SsmConfigurationProviderOptions { Path = "/MyApp/" };
+        var sut = new SsmConfigurationProvider(ssm, options, null);
+
+        ssm.SetupResponse(new GetParametersByPathResponse
+        {
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "/MyApp/Db/Host", Value = "localhost", Type = ParameterType.String }
+            }
+        });
+
+        sut.Load();
+
+        ssm.Requests.Should().ContainSingle().Which.Path.Should().Be("/MyApp");
+        sut.Get("Db", "Host").Should().Be("localhost");
+    }
+
+    [Fact]
+    public void Key_generator_receives_final_flattened_json_keys()
+    {
+        var ssm = new FakeSsmClient();
+        var options = new SsmConfigurationProviderOptions { Path = "/MyApp" };
+        options.KeyGenerator = (key, _) => key.ToUpperInvariant();
+        var sut = new SsmConfigurationProvider(ssm, options, null);
+
+        ssm.SetupResponse(new GetParametersByPathResponse
+        {
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "/MyApp/Db", Value = """{"Host": "localhost"}""", Type = ParameterType.String }
+            }
+        });
+
+        sut.Load();
+
+        sut.Get("DB:HOST").Should().Be("localhost");
+    }
+
+    [Fact]
+    public void Configure_get_parameters_by_path_request_hook_is_applied_and_pagination_is_preserved()
+    {
+        var ssm = new FakeSsmClient();
+        var options = new SsmConfigurationProviderOptions();
+        var maxResultsSeen = new List<int?>();
+        options.ConfigureGetParametersByPathRequest = request =>
+        {
+            request.MaxResults = 1;
+            maxResultsSeen.Add(request.MaxResults);
+        };
+        var sut = new SsmConfigurationProvider(ssm, options, null);
+
+        ssm.SetupResponses(
+            new GetParametersByPathResponse
+            {
+                Parameters = new List<Parameter>
+                {
+                    new Parameter { Name = "/MyApp/Page1Param", Value = "v1", Type = ParameterType.String }
+                },
+                NextToken = "token-1"
+            },
+            new GetParametersByPathResponse
+            {
+                Parameters = new List<Parameter>
+                {
+                    new Parameter { Name = "/MyApp/Page2Param", Value = "v2", Type = ParameterType.String }
+                }
+            });
+
+        sut.Load();
+
+        ssm.Requests.Should().HaveCount(2);
+        ssm.Requests.Should().OnlyContain(r => r.MaxResults == 1);
+        ssm.Requests[1].NextToken.Should().Be("token-1");
+        maxResultsSeen.Should().HaveCount(2);
+     }
 }
