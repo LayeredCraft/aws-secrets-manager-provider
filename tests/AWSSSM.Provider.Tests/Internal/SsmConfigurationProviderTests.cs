@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
-using AWSSecretsManager.Provider.Tests.Types;
+using AWSSSM.Provider.Tests.Types;
 using AWSSSM.Provider.Internal;
 using AWSSSM.Provider.Tests;
 using Xunit;

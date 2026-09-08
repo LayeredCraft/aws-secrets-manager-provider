@@ -1,4 +1,4 @@
-﻿namespace AWSSecretsManager.Provider.Tests.Types;
+﻿namespace AWSSSM.Provider.Tests.Types;
 
 public class RootObject
 {

@@ -84,5 +84,6 @@ nav:
   - SSM Parameter Store: ssm-parameter-store.md
   - Platform Support: platform-support.md
   - Troubleshooting & FAQ: troubleshooting.md
+  - Migration & Compatibility: migration.md
   - API Reference: api-reference.md
   - AI Coding Agent Skill: agent-skill.md
