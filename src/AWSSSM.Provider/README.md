@@ -12,6 +12,7 @@ It loads parameters under a hierarchy path from [AWS SSM Parameter Store](https:
 ## ✨ Features
 
 - ✅ Targeted to .NET 8, 9, 10, and 11 (plus `netstandard2.0`)
+- ✅ Official Native AOT support on `net8.0` and later
 - ✅ Hierarchical parameter loading via `GetParametersByPath` (recursive by default)
 - ✅ Automatic JSON flattening of `String` and `SecureString` parameter values
 - ✅ Optional background polling for parameter changes

@@ -2,15 +2,23 @@
 
 ## Target framework matrix
 
-| Target | Notes |
-|---|---|
+| Target           | Notes                                                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `netstandard2.0` | Enables consumption from .NET Framework 4.6.2+ and .NET Core 2.0+, alongside anything else that targets netstandard2.0. |
-| `net8.0` | Long-term-supported .NET release. |
-| `net9.0` | Current .NET release. |
-| `net10.0` | Current .NET release. |
-| `net11.0` | Forward-looking target, tracked as it becomes generally available. |
+| `net8.0`         | Long-term-supported .NET release.                                                                                       |
+| `net9.0`         | Current .NET release.                                                                                                   |
+| `net10.0`        | Current .NET release.                                                                                                   |
+| `net11.0`        | Forward-looking target, tracked as it becomes generally available.                                                      |
 
-`Microsoft.Extensions.Configuration` is version-pinned per target framework in this package (via central package management) so each build picks up the matching stable (or, for `net11.0`, current preview) line of that package rather than an incompatible cross-major version — this is an internal packaging detail and requires no action from consumers.
+`Microsoft.Extensions.Configuration` is version-pinned per target framework in this package (via central package management) so each build picks up the matching stable (or, for `net11.0`, current preview) line of that package rather than an incompatible cross-major version. Consumers need not configure this.
+
+## Native AOT
+
+`AWSSecretsManager.Provider` and `AWSSSM.Provider` officially support Native AOT in apps targeting `net8.0` or later. Both packages enable trim and AOT analyzers for those targets. CI publishes a Native AOT test app that roots every member in both assemblies and fails on trim (`IL2xxx`) or AOT (`IL3xxx`) warnings.
+
+JSON object and array values use `System.Text.Json` DOM APIs (`JsonDocument` and `JsonElement`). This path does not require reflection-based serialization or a source-generated serializer context.
+
+`netstandard2.0` remains supported for non-AOT consumers. Native AOT apps select a `net8.0` or later asset.
 
 ## Local development against LocalStack
 

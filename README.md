@@ -22,6 +22,7 @@ It provides a configuration provider for [Microsoft.Extensions.Configuration](ht
 - ✅ Converted to use `System.Text.Json` only
 - ✅ Refactored structure for better modern SDK usage
 - ✅ Comprehensive logging, batch fetch, and polling/reload support
+- ✅ Official Native AOT support on `net8.0` and later
 - ✅ Published as a new NuGet package: [`AWSSecretsManager.Provider`](https://www.nuget.org/packages/AWSSecretsManager.Provider)
 
 ---
