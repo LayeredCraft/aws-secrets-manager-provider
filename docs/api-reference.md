@@ -180,16 +180,19 @@ Same overload semantics as `AddSecretsManager`.
 
 ## `AWSSSM.Provider.Internal.SsmConfigurationProviderOptions`
 
-| Member               | Signature                                     | Default                      |
-| -------------------- | --------------------------------------------- | ---------------------------- |
-| `Path`               | `string`                                      | `"/"`                        |
-| `Recursive`          | `bool`                                        | `true`                       |
-| `WithDecryption`     | `bool`                                        | `true`                       |
-| `ParameterFilter`    | `Func<Parameter, bool>`                       | `_ => true`                  |
-| `KeyGenerator`       | `Func<string, string, string>`                | strip path prefix, `/` → `:` |
-| `ConfigureSsmConfig` | `Action<AmazonSimpleSystemsManagementConfig>` | no-op                        |
-| `CreateClient`       | `Func<IAmazonSimpleSystemsManagement>?`       | `null`                       |
-| `PollingInterval`    | `TimeSpan?`                                   | `null`                       |
+| Member                                | Signature                                     | Default                      |
+| ------------------------------------- | --------------------------------------------- | ---------------------------- |
+| `Path`                                | `string`                                      | `"/"`                        |
+| `Recursive`                           | `bool`                                        | `true`                       |
+| `WithDecryption`                      | `bool`                                        | `true`                       |
+| `ParameterFilter`                     | `Func<Parameter, bool>`                       | `_ => true`                  |
+| `KeyGenerator`                        | `Func<string, string, string>`                | strip path prefix, `/` → `:` |
+| `ConfigureSsmConfig`                  | `Action<AmazonSimpleSystemsManagementConfig>` | no-op                        |
+| `ConfigureGetParametersByPathRequest` | `Action<GetParametersByPathRequest>?`         | `null`                       |
+| `CreateClient`                        | `Func<IAmazonSimpleSystemsManagement>?`       | `null`                       |
+| `PollingInterval`                     | `TimeSpan?`                                   | `null`                       |
+
+The `ConfigureGetParametersByPathRequest` hook runs on every page request before the call is made, enabling request-level knobs such as `MaxResults` and server-side `ParameterFilters` (`Type`, `KeyId`, `Label`). The provider re-applies its own fields (`Path`, `Recursive`, `WithDecryption`) and `NextToken` after the hook, so the request always matches the configured options and pagination is preserved; the hook should be used for everything else.
 
 ## `AWSSSM.Provider.Internal.SsmConfigurationProvider`
 

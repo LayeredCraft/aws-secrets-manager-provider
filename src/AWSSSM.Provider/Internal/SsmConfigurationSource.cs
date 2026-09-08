@@ -1,4 +1,5 @@
 using System;
+using Amazon;
 using Amazon.Runtime;
 using Amazon.SimpleSystemsManagement;
 using AWSConfiguration.Core.Internal;
@@ -10,7 +11,7 @@ namespace AWSSSM.Provider.Internal;
 /// <summary>
 /// Configuration source for AWS SSM Parameter Store without logger support.
 /// </summary>
-public class SsmConfigurationSource : AwsConfigurationSourceBase<IAmazonSimpleSystemsManagement, AmazonSimpleSystemsManagementConfig>
+public class SsmConfigurationSource : IConfigurationSource
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SsmConfigurationSource"/> class.
@@ -18,44 +19,41 @@ public class SsmConfigurationSource : AwsConfigurationSourceBase<IAmazonSimpleSy
     /// <param name="credentials">The AWS credentials to use for authentication.</param>
     /// <param name="options">The configuration options.</param>
     public SsmConfigurationSource(AWSCredentials? credentials = null, SsmConfigurationProviderOptions? options = null)
-        : base(credentials)
     {
+        Credentials = credentials;
         Options = options ?? new SsmConfigurationProviderOptions();
     }
+
+    /// <summary>
+    /// Gets the AWS credentials used for authentication.
+    /// </summary>
+    public AWSCredentials? Credentials { get; }
+
+    /// <summary>
+    /// Gets or sets the AWS region endpoint.
+    /// </summary>
+    public RegionEndpoint? Region { get; set; }
 
     /// <summary>
     /// Gets the configuration options for the SSM provider.
     /// </summary>
     public SsmConfigurationProviderOptions Options { get; }
 
-    /// <inheritdoc />
-    protected override void ConfigureClient(AmazonSimpleSystemsManagementConfig clientConfig)
-    {
-        Options.ConfigureSsmConfig(clientConfig);
-    }
-
-    /// <inheritdoc />
-    protected override Func<IAmazonSimpleSystemsManagement>? CustomClientFactory => Options.CreateClient;
-
-    /// <inheritdoc />
-    protected override IAmazonSimpleSystemsManagement CreateDefaultClient(AmazonSimpleSystemsManagementConfig clientConfig)
-    {
-        return new AmazonSimpleSystemsManagementClient(clientConfig);
-    }
-
-    /// <inheritdoc />
-    protected override IAmazonSimpleSystemsManagement CreateClient(AWSCredentials credentials, AmazonSimpleSystemsManagementConfig clientConfig)
-    {
-        return new AmazonSimpleSystemsManagementClient(credentials, clientConfig);
-    }
-
     /// <summary>
     /// Builds the configuration provider.
     /// </summary>
     /// <param name="builder">The configuration builder.</param>
     /// <returns>The configuration provider instance.</returns>
-    protected override IConfigurationProvider BuildProvider(IAmazonSimpleSystemsManagement client)
+    public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
+        var client = AwsClientFactory.Create<IAmazonSimpleSystemsManagement, AmazonSimpleSystemsManagementConfig>(
+            customClientFactory: Options.CreateClient,
+            credentials: Credentials,
+            region: Region,
+            configureClient: Options.ConfigureSsmConfig,
+            createDefaultClient: clientConfig => new AmazonSimpleSystemsManagementClient(clientConfig),
+            createClientWithCredentials: (credentials, clientConfig) => new AmazonSimpleSystemsManagementClient(credentials, clientConfig));
+
         // No automatic logger resolution - use explicit logger overloads if logging is needed
         return new SsmConfigurationProvider(client, Options, logger: null);
     }
@@ -64,7 +62,7 @@ public class SsmConfigurationSource : AwsConfigurationSourceBase<IAmazonSimpleSy
 /// <summary>
 /// Configuration source that supports explicit logger injection
 /// </summary>
-public class SsmConfigurationSourceWithLogger : AwsConfigurationSourceBase<IAmazonSimpleSystemsManagement, AmazonSimpleSystemsManagementConfig>
+public class SsmConfigurationSourceWithLogger : IConfigurationSource
 {
     private readonly SsmConfigurationProviderOptions _options;
     private readonly ILogger _logger;
@@ -77,40 +75,37 @@ public class SsmConfigurationSourceWithLogger : AwsConfigurationSourceBase<IAmaz
     /// <param name="logger">The logger instance for diagnostic information.</param>
     /// <exception cref="ArgumentNullException">Thrown when options or logger are null.</exception>
     public SsmConfigurationSourceWithLogger(AWSCredentials? credentials, SsmConfigurationProviderOptions options, ILogger logger)
-        : base(credentials)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        Credentials = credentials;
     }
 
-    /// <inheritdoc />
-    protected override void ConfigureClient(AmazonSimpleSystemsManagementConfig clientConfig)
-    {
-        _options.ConfigureSsmConfig(clientConfig);
-    }
+    /// <summary>
+    /// Gets the AWS credentials used for authentication.
+    /// </summary>
+    public AWSCredentials? Credentials { get; }
 
-    /// <inheritdoc />
-    protected override Func<IAmazonSimpleSystemsManagement>? CustomClientFactory => _options.CreateClient;
-
-    /// <inheritdoc />
-    protected override IAmazonSimpleSystemsManagement CreateDefaultClient(AmazonSimpleSystemsManagementConfig clientConfig)
-    {
-        return new AmazonSimpleSystemsManagementClient(clientConfig);
-    }
-
-    /// <inheritdoc />
-    protected override IAmazonSimpleSystemsManagement CreateClient(AWSCredentials credentials, AmazonSimpleSystemsManagementConfig clientConfig)
-    {
-        return new AmazonSimpleSystemsManagementClient(credentials, clientConfig);
-    }
+    /// <summary>
+    /// Gets or sets the AWS region endpoint.
+    /// </summary>
+    public RegionEndpoint? Region { get; set; }
 
     /// <summary>
     /// Builds the configuration provider.
     /// </summary>
     /// <param name="builder">The configuration builder.</param>
     /// <returns>The configuration provider instance.</returns>
-    protected override IConfigurationProvider BuildProvider(IAmazonSimpleSystemsManagement client)
+    public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
+        var client = AwsClientFactory.Create<IAmazonSimpleSystemsManagement, AmazonSimpleSystemsManagementConfig>(
+            customClientFactory: _options.CreateClient,
+            credentials: Credentials,
+            region: Region,
+            configureClient: _options.ConfigureSsmConfig,
+            createDefaultClient: clientConfig => new AmazonSimpleSystemsManagementClient(clientConfig),
+            createClientWithCredentials: (credentials, clientConfig) => new AmazonSimpleSystemsManagementClient(credentials, clientConfig));
+
         return new SsmConfigurationProvider(client, _options, _logger);
     }
 }

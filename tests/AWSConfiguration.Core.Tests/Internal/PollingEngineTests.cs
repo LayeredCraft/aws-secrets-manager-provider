@@ -8,30 +8,41 @@ using Xunit;
 
 namespace AWSConfiguration.Core.Tests.Internal;
 
-public class PollingConfigurationProviderTests
+public class PollingEngineTests
 {
-    private sealed class FakePollingProvider : PollingConfigurationProvider
+    private sealed class FakePollingProvider : ConfigurationProvider, IDisposable
     {
+        private readonly PollingEngine _engine;
+
         public Func<CancellationToken, HashSet<(string, string?)>> FetchImpl { get; set; } = _ => new();
         public TimeSpan? Interval { get; set; }
 
-        public FakePollingProvider(Microsoft.Extensions.Logging.ILogger? logger = null) : base(logger)
+        public FakePollingProvider(Microsoft.Extensions.Logging.ILogger? logger = null)
         {
+            _engine = new PollingEngine(
+                logger,
+                resourceDescription: "test values",
+                resourceNoun: "test value",
+                duplicateKeyOptionsHint: "Adjust the test options.",
+                fetchConfiguration: cancellationToken => Task.FromResult(FetchImpl(cancellationToken)),
+                pollingInterval: () => Interval,
+                commitData: (data, publishChange) =>
+                {
+                    Data = data;
+                    if (publishChange)
+                    {
+                        OnReload();
+                    }
+                });
         }
 
-        protected override string ResourceDescription => "test values";
+        public new void Load() => _engine.Load();
 
-        protected override string ResourceNoun => "test value";
+        public Task ForceReloadAsync(CancellationToken cancellationToken) => _engine.ForceReloadAsync(cancellationToken);
 
-        protected override string DuplicateKeyOptionsHint => "Adjust the test options.";
-
-        protected override TimeSpan? PollingInterval => Interval;
-
-        protected override Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
-        {
-            return Task.FromResult(FetchImpl(cancellationToken));
-        }
+        public void Dispose() => _engine.Dispose();
     }
+
 
     private static HashSet<(string, string?)> Values(params (string Key, string? Value)[] pairs)
     {

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
 using AWSConfiguration.Core.Internal;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AWSSSM.Provider.Internal;
@@ -12,8 +13,10 @@ namespace AWSSSM.Provider.Internal;
 /// <summary>
 /// Configuration provider that loads parameters from AWS SSM Parameter Store.
 /// </summary>
-public class SsmConfigurationProvider : PollingConfigurationProvider
+public class SsmConfigurationProvider : ConfigurationProvider, IDisposable
 {
+    private readonly PollingEngine _engine;
+
     /// <summary>
     /// Gets the configuration options for the SSM provider.
     /// </summary>
@@ -32,31 +35,64 @@ public class SsmConfigurationProvider : PollingConfigurationProvider
     /// <param name="logger">The logger instance for diagnostic information.</param>
     /// <exception cref="ArgumentNullException">Thrown when client or options are null.</exception>
     public SsmConfigurationProvider(IAmazonSimpleSystemsManagement client, SsmConfigurationProviderOptions options, ILogger? logger = null)
-        : base(logger)
     {
         Options = options ?? throw new ArgumentNullException(nameof(options));
         Client = client ?? throw new ArgumentNullException(nameof(client));
+
+        _engine = new PollingEngine(
+            logger,
+            resourceDescription: "parameters from AWS SSM Parameter Store",
+            resourceNoun: "SSM parameter",
+            duplicateKeyOptionsHint: "Adjust the KeyGenerator or ParameterFilter options so each parameter maps to a unique key.",
+            fetchConfiguration: FetchConfigurationAsync,
+            pollingInterval: () => Options.PollingInterval,
+            commitData: (data, publishChange) =>
+            {
+                Data = data;
+                if (publishChange)
+                {
+                    OnReload();
+                }
+            });
     }
 
-    /// <inheritdoc />
-    protected override string ResourceDescription => "parameters from AWS SSM Parameter Store";
+    /// <summary>
+    /// Loads the configuration data from AWS SSM Parameter Store.
+    /// </summary>
+    public override void Load()
+    {
+        _engine.Load();
+    }
 
-    /// <inheritdoc />
-    protected override string ResourceNoun => "SSM parameter";
+    /// <summary>
+    /// Forces a reload of the configuration data from AWS SSM Parameter Store.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous reload operation.</returns>
+    public Task ForceReloadAsync(CancellationToken cancellationToken)
+    {
+        return _engine.ForceReloadAsync(cancellationToken);
+    }
 
-    /// <inheritdoc />
-    protected override string DuplicateKeyOptionsHint =>
-        "Adjust the KeyGenerator or ParameterFilter options so each parameter maps to a unique key.";
+    /// <summary>
+    /// Releases all resources used by the provider, stopping any active polling.
+    /// </summary>
+    public void Dispose()
+    {
+        _engine.Dispose();
+    }
 
-    /// <inheritdoc />
-    protected override TimeSpan? PollingInterval => Options.PollingInterval;
+    private void AddConfigurationValue(HashSet<(string, string?)> configuration, string key, string? value)
+    {
+        _engine.AddConfigurationValue(configuration, key, value);
+    }
 
     /// <summary>
     /// Fetches the current parameter values by walking the configured hierarchy path.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A set of configuration key/value pairs.</returns>
-    protected override async Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
+    private async Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
     {
         // Normalize once so the AWS request and the key mapping agree even when
         // the caller configures a trailing slash (e.g. "/MyApp/").
@@ -80,6 +116,12 @@ public class SsmConfigurationProvider : PollingConfigurationProvider
 
             Options.ConfigureGetParametersByPathRequest?.Invoke(request);
 
+            // Re-apply the provider-owned fields after the hook so the request always
+            // stays in sync with the configured options and key mapping; NextToken is
+            // assigned last so pagination cannot be clobbered by the hook either.
+            request.Path = normalizedPath;
+            request.Recursive = Options.Recursive;
+            request.WithDecryption = Options.WithDecryption;
             request.NextToken = response?.NextToken;
 
             response = await Client.GetParametersByPathAsync(request, cancellationToken).ConfigureAwait(false);

@@ -7,6 +7,7 @@ using Amazon.Runtime;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using AWSConfiguration.Core.Internal;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AWSSecretsManager.Provider.Internal;
@@ -14,8 +15,10 @@ namespace AWSSecretsManager.Provider.Internal;
 /// <summary>
 /// Configuration provider that loads secrets from AWS Secrets Manager.
 /// </summary>
-public class SecretsManagerConfigurationProvider : PollingConfigurationProvider
+public class SecretsManagerConfigurationProvider : ConfigurationProvider, IDisposable
 {
+    private readonly PollingEngine _engine;
+
     /// <summary>
     /// Gets the configuration options for the secrets manager provider.
     /// </summary>
@@ -34,31 +37,64 @@ public class SecretsManagerConfigurationProvider : PollingConfigurationProvider
     /// <param name="logger">The logger instance for diagnostic information.</param>
     /// <exception cref="ArgumentNullException">Thrown when client or options are null.</exception>
     public SecretsManagerConfigurationProvider(IAmazonSecretsManager client, SecretsManagerConfigurationProviderOptions options, ILogger? logger = null)
-        : base(logger)
     {
         Options = options ?? throw new ArgumentNullException(nameof(options));
         Client = client ?? throw new ArgumentNullException(nameof(client));
+
+        _engine = new PollingEngine(
+            logger,
+            resourceDescription: "secrets from AWS Secrets Manager",
+            resourceNoun: "secret",
+            duplicateKeyOptionsHint: "Adjust the KeyGenerator or SecretFilter options so each secret maps to a unique key.",
+            fetchConfiguration: FetchConfigurationAsync,
+            pollingInterval: () => Options.PollingInterval,
+            commitData: (data, publishChange) =>
+            {
+                Data = data;
+                if (publishChange)
+                {
+                    OnReload();
+                }
+            });
     }
 
-    /// <inheritdoc />
-    protected override string ResourceDescription => "secrets from AWS Secrets Manager";
+    /// <summary>
+    /// Loads the configuration data from AWS Secrets Manager.
+    /// </summary>
+    public override void Load()
+    {
+        _engine.Load();
+    }
 
-    /// <inheritdoc />
-    protected override string ResourceNoun => "secret";
+    /// <summary>
+    /// Forces a reload of the configuration data from AWS Secrets Manager.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous reload operation.</returns>
+    public Task ForceReloadAsync(CancellationToken cancellationToken)
+    {
+        return _engine.ForceReloadAsync(cancellationToken);
+    }
 
-    /// <inheritdoc />
-    protected override string DuplicateKeyOptionsHint =>
-        "Adjust the KeyGenerator or SecretFilter options so each secret maps to a unique key.";
+    /// <summary>
+    /// Releases all resources used by the provider, stopping any active polling.
+    /// </summary>
+    public void Dispose()
+    {
+        _engine.Dispose();
+    }
 
-    /// <inheritdoc />
-    protected override TimeSpan? PollingInterval => Options.PollingInterval;
+    private void AddConfigurationValue(HashSet<(string, string?)> configuration, string key, string? value)
+    {
+        _engine.AddConfigurationValue(configuration, key, value);
+    }
 
     /// <summary>
     /// Fetches the current configuration values, using batch fetching when enabled.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A set of configuration key/value pairs.</returns>
-    protected override async Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
+    private async Task<HashSet<(string, string?)>> FetchConfigurationAsync(CancellationToken cancellationToken)
     {
         return Options.UseBatchFetch switch
         {
