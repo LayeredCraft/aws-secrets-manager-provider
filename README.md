@@ -1,7 +1,11 @@
 # AWSSecretsManager.Provider
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+
 [![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
+
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
+
 [![NuGet version](https://img.shields.io/nuget/vpre/AWSSecretsManager.Provider.svg)](https://www.nuget.org/packages/AWSSecretsManager.Provider)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/AWSSecretsManager.Provider.svg)](https://www.nuget.org/packages/AWSSecretsManager.Provider/)
 [![Build Status](https://github.com/LayeredCraft/aws-secrets-manager-provider/actions/workflows/pr-build.yaml/badge.svg)](https://github.com/LayeredCraft/aws-secrets-manager-provider/actions/workflows/pr-build.yaml)
@@ -78,20 +82,22 @@ npx skills add LayeredCraft/aws-secrets-manager-provider
 
 See [docs/agent-skill.md](https://layeredcraft.github.io/aws-secrets-manager-provider/agent-skill/) or the skill source at [`skills/aws-secrets-manager-provider/`](./skills/aws-secrets-manager-provider/).
 
+Using `AWSSSM.Provider` too? There's a dedicated SSM skill at [`skills/aws-ssm-provider/`](./skills/aws-ssm-provider/) covering `AddSsmParameters`, `SsmConfigurationProviderOptions`, path/key-mapping rules, and SSM-specific IAM guidance.
+
 ## 📚 Samples
 
 The repository includes comprehensive samples demonstrating different usage patterns:
 
-| Sample | Description | Key Features |
-|--------|-------------|--------------|
-| **[Sample1](./samples/Sample1/)** | Basic Usage | Default credentials, default region, all secrets |
-| **[Sample2](./samples/Sample2/)** | Region Configuration | Custom AWS region specification |
-| **[Sample3](./samples/Sample3/)** | Credential Profiles | Using named AWS credential profiles |
-| **[Sample4](./samples/Sample4/)** | Secret Filtering | Loading specific secrets by ARN allowlist |
-| **[Sample5](./samples/Sample5/)** | Custom Key Generation | Transforming configuration key names (e.g., uppercase) |
-| **[Sample6](./samples/Sample6/)** | Custom Client Factory | Advanced AWS client configuration |
-| **[Sample7](./samples/Sample7/)** | Advanced Logging | Comprehensive logging, polling, and monitoring |
-| **[SampleWeb](./samples/SampleWeb/)** | ASP.NET Core | Web application integration with endpoints |
+| Sample                                | Description           | Key Features                                           |
+| ------------------------------------- | --------------------- | ------------------------------------------------------ |
+| **[Sample1](./samples/Sample1/)**     | Basic Usage           | Default credentials, default region, all secrets       |
+| **[Sample2](./samples/Sample2/)**     | Region Configuration  | Custom AWS region specification                        |
+| **[Sample3](./samples/Sample3/)**     | Credential Profiles   | Using named AWS credential profiles                    |
+| **[Sample4](./samples/Sample4/)**     | Secret Filtering      | Loading specific secrets by ARN allowlist              |
+| **[Sample5](./samples/Sample5/)**     | Custom Key Generation | Transforming configuration key names (e.g., uppercase) |
+| **[Sample6](./samples/Sample6/)**     | Custom Client Factory | Advanced AWS client configuration                      |
+| **[Sample7](./samples/Sample7/)**     | Advanced Logging      | Comprehensive logging, polling, and monitoring         |
+| **[SampleWeb](./samples/SampleWeb/)** | ASP.NET Core          | Web application integration with endpoints             |
 
 Each sample includes a detailed README with usage examples, prerequisites, and explanations. See the complete [samples overview](./samples/) for setup instructions and learning progression.
 
@@ -132,6 +138,7 @@ This project is based on the excellent work by [Renato Golia](https://github.com
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+
 ## Contributors ✨
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):

@@ -52,16 +52,17 @@ builder.Configuration.AddSsmParameters(configurator: options =>
 
 ## Options quick-reference (`SsmConfigurationProviderOptions`)
 
-| Option | Purpose |
-|---|---|
-| `Path` (`string`, default `"/"`) | Hierarchy to fetch via `GetParametersByPath`. This is the primary scoping mechanism — prefer a narrow path over fetching from root. |
-| `Recursive` (`bool`, default `true`) | `false` fetches only the immediate level of `Path`. |
-| `WithDecryption` (`bool`, default `true`) | Decrypts `SecureString` parameters; needs `kms:Decrypt` on the encrypting key. |
-| `ParameterFilter` (`Func<Parameter, bool>`) | Client-side predicate applied to each returned parameter. |
-| `KeyGenerator` (`Func<string, string, string>`) | Receives `(parameterName, path)`; returns the configuration key. Default strips the path prefix and converts `/` → `:`. |
-| `ConfigureSsmConfig` | Customizes `AmazonSimpleSystemsManagementConfig` (timeouts, local emulator `ServiceURL`). Ignored if `CreateClient` is set. |
-| `CreateClient` (`Func<IAmazonSimpleSystemsManagement>?`) | Full client construction override; bypasses region/credentials/`ConfigureSsmConfig`. |
-| `PollingInterval` (`TimeSpan?`) | `null` (default) = load once. Set to enable background reload. |
+| Option                                                                        | Purpose                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Path` (`string`, default `"/"`)                                              | Hierarchy to fetch via `GetParametersByPath`. This is the primary scoping mechanism — prefer a narrow path over fetching from root.                                                                                                                        |
+| `Recursive` (`bool`, default `true`)                                          | `false` fetches only the immediate level of `Path`. Note: AWS documents that recursive access can return child parameters even when a child path has an explicit IAM deny — keep `Path` narrow and IAM scoped.                                             |
+| `WithDecryption` (`bool`, default `true`)                                     | Decrypts `SecureString` parameters; needs `kms:Decrypt` on the encrypting key.                                                                                                                                                                             |
+| `ParameterFilter` (`Func<Parameter, bool>`)                                   | Client-side predicate applied to each returned parameter.                                                                                                                                                                                                  |
+| `KeyGenerator` (`Func<string, string, string>`)                               | Receives `(finalKey, path)` and transforms the **final** configuration key — after path-prefix mapping and after JSON property/index suffixes are appended (same point in the pipeline as the Secrets Manager provider). Default is an identity transform. |
+| `ConfigureGetParametersByPathRequest` (`Action<GetParametersByPathRequest>?`) | Customizes each `GetParametersByPathRequest` before it is sent (e.g. `MaxResults`, server-side `ParameterFilters` by `Type`/`KeyId`/`Label`). Invoked once per page; `NextToken` is set afterwards, so pagination is preserved.                            |
+| `ConfigureSsmConfig`                                                          | Customizes `AmazonSimpleSystemsManagementConfig` (timeouts, local emulator `ServiceURL`). Ignored if `CreateClient` is set.                                                                                                                                |
+| `CreateClient` (`Func<IAmazonSimpleSystemsManagement>?`)                      | Full client construction override; bypasses region/credentials/`ConfigureSsmConfig`.                                                                                                                                                                       |
+| `PollingInterval` (`TimeSpan?`)                                               | `null` (default) = load once. Set to enable background reload.                                                                                                                                                                                             |
 
 That is the complete set — the package deliberately has no `UseBatchFetch`, `IgnoreMissingValues`, or ARN-allowlist options. `GetParametersByPath` is a single paginated call that both lists and fetches, and an absent path yields an empty configuration rather than an error.
 
@@ -70,12 +71,13 @@ That is the complete set — the package deliberately has no `UseBatchFetch`, `I
 - Default mapping: strip the configured `Path` prefix from the parameter name, trim leading `/`, convert remaining `/` to `:`. With `Path = "/MyApp"`, `/MyApp/Db/Host` → `Db:Host`. With default `Path = "/"`, `/MyApp/Db/Host` → `MyApp:Db:Host`.
 - **JSON object/array parameter values** are recursively flattened the same way as the Secrets Manager sibling package: `:`-delimited keys, numeric array indices, `System.Text.Json` only (never Newtonsoft). Detection is conservative — only attempted when the value's first non-whitespace character is `{` or `[`; failed parse falls back to plain-string storage.
 - **Plain string, StringList, and SecureString values** become one configuration key under the mapped parameter name (StringList is stored as its raw comma-joined string, not exploded).
-- **Keys are case-insensitive.**
-- A parameter name exactly equal to a non-root `Path` falls back to the full parameter name as key (never an empty key).
+- **Keys are case-insensitive.** Duplicate keys with identical values (byte-for-byte) log a warning and skip the extra entry; conflicting values throw `InvalidOperationException`.
+- `Path` is an AWS hierarchy **prefix**: `GetParametersByPath` returns parameters _below_ `Path` (e.g. `Path = "/MyApp"` returns `/MyApp/Db/Host`), not parameters whose name is exactly `Path`. A parameter name exactly equal to a non-root `Path` is a defensive-only edge case (falls back to the full parameter name as key, never an empty key) — do not design for or rely on it.
+- A trailing slash in `Path` is normalized away — `"/MyApp/"` behaves exactly like `"/MyApp"`.
 
 ## Credentials & region
 
-Default: standard AWS SDK for .NET credential chain and region-resolution fallback — this package adds no logic on top. For explicit control pass `AWSCredentials`/`RegionEndpoint` to `AddSsmParameters`. For local emulators use `ConfigureSsmConfig` to set `ServiceURL` (e.g. Floci or LocalStack at `http://localhost:4566`) with any non-empty credentials. Never invent env-var names or resolution order this package doesn't implement.
+Default: standard AWS SDK for .NET credential chain and region-resolution fallback — this package adds no logic on top. For explicit control pass `AWSCredentials`/`RegionEndpoint` to `AddSsmParameters`. For local emulators use `ConfigureSsmConfig` to set `ServiceURL` (e.g. Floci or LocalStack at `http://localhost:4566`) with any non-empty credentials — pass them explicitly, e.g. `AddSsmParameters(credentials: new BasicAWSCredentials("test", "test"), ...)`, rather than relying on the caller's default credential chain. Never invent env-var names or resolution order this package doesn't implement.
 
 ## IAM permissions
 
@@ -94,6 +96,7 @@ Default: standard AWS SDK for .NET credential chain and region-resolution fallba
 - Don't invent options (`UseBatchFetch`, `IgnoreMissingValues`, `AcceptedSecretArns`) that don't exist on `SsmConfigurationProviderOptions`.
 - Don't claim StringList parameters are split into per-element configuration keys — they are stored as the raw string.
 - Don't claim a missing path or absent parameter throws — the result is simply an empty/missing key.
+- Don't treat `Path` as an exact-name selector — it's a hierarchy prefix; `Path = "/MyApp"` returns children like `/MyApp/Db/Host`, not a parameter named exactly `/MyApp`.
 
 ## Where to point the user for more depth
 

@@ -72,6 +72,30 @@
         "States AddSecretsManager does not read SSM Parameter Store",
         "Does not claim SsmConfigurationProviderOptions has UseBatchFetch, IgnoreMissingValues, or AcceptedSecretArns options"
       ]
+    },
+    {
+      "id": 7,
+      "category": "advanced",
+      "prompt": "My SSM hierarchy has hundreds of parameters under /MyApp, but I only want String-type parameters from the AWS side, and I don't want one giant page. How can I scope the actual GetParametersByPath request?",
+      "expected_output": "Uses ConfigureGetParametersByPathRequest on SsmConfigurationProviderOptions to set ParameterFilters (e.g. request.ParameterFilters with Key = \"Type\", Option = \"Equals\", Values = [\"String\"]) and MaxResults, explaining these are applied server-side. Notes this differs from the client-side ParameterFilter option, and that the provider sets NextToken after the hook so pagination still works.",
+      "files": [],
+      "assertions": [
+        "Uses ConfigureGetParametersByPathRequest for request-level customization",
+        "Distinguishes server-side ParameterFilters on the request from the client-side ParameterFilter option",
+        "Does not break pagination or claim the hook replaces NextToken handling"
+      ]
+    },
+    {
+      "id": 8,
+      "category": "normal-usage",
+      "prompt": "I need all my SSM-derived configuration keys uppercased to match our existing appsettings convention. Can the SSM provider rewrite keys, including keys that come out of JSON parameter values?",
+      "expected_output": "Sets KeyGenerator = (key, path) => key.ToUpperInvariant(), explaining KeyGenerator runs on each final configuration key — after the path prefix is stripped and after JSON property/index suffixes are appended — so keys produced by flattening a JSON parameter value are transformed too, matching the AWSSecretsManager.Provider behavior.",
+      "files": [],
+      "assertions": [
+        "Uses the KeyGenerator option for key rewriting",
+        "States KeyGenerator receives the final flattened key (including JSON/array suffixes), not the raw parameter name",
+        "Does not claim JSON property suffixes are appended after the generator runs"
+      ]
     }
   ]
 }
