@@ -11,7 +11,7 @@ It is a modern, community-maintained fork of [Kralizek/AWSSecretsManagerConfigur
 - Fetches secrets from AWS Secrets Manager and exposes them as `IConfiguration` key/value pairs.
 - Flattens JSON-object/array secret values into hierarchical, `:`-delimited configuration keys — the same shape `appsettings.json` produces.
 - Supports filtering (by ARN allowlist, custom predicate, or AWS-side `ListSecrets` filters), custom key naming, custom AWS client construction, and optional background polling for live reload.
-- Works from `netstandard2.0` up through the latest .NET, in console apps, worker services, and ASP.NET Core.
+- Works from `netstandard2.0` up through the latest .NET, in console apps, worker services, and ASP.NET Core. Native AOT is officially supported for `net8.0` and later.
 
 ## What it doesn't do
 
@@ -21,16 +21,16 @@ It is a modern, community-maintained fork of [Kralizek/AWSSecretsManagerConfigur
 
 ## Where to go next
 
-| Page | Read this for... |
-|---|---|
-| [Getting Started](getting-started.md) | Installing the package and wiring up your first `AddSecretsManager()` call. |
-| [Configuration & Secret Mapping](configuration.md) | Every option on `SecretsManagerConfigurationProviderOptions`, and exactly how a secret value becomes one or more configuration keys. |
-| [Advanced Usage](advanced.md) | Batch fetching, polling/reload, `ForceReloadAsync`, and custom AWS client construction. |
-| [Authentication & Security](authentication-and-security.md) | Credential resolution, region resolution, required IAM permissions, and secret-exposure guidance. |
-| [Platform Support](platform-support.md) | Target framework compatibility and using the provider against LocalStack for local development. |
-| [Troubleshooting & FAQ](troubleshooting.md) | Diagnosing common failures and answers to recurring questions. |
-| [API Reference](api-reference.md) | Full signatures for every public type and member. |
-| [AI Coding Agent Skill](agent-skill.md) | An installable Agent Skill that teaches AI coding assistants to use this package correctly. |
+| Page                                                        | Read this for...                                                                                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [Getting Started](getting-started.md)                       | Installing the package and wiring up your first `AddSecretsManager()` call.                                                          |
+| [Configuration & Secret Mapping](configuration.md)          | Every option on `SecretsManagerConfigurationProviderOptions`, and exactly how a secret value becomes one or more configuration keys. |
+| [Advanced Usage](advanced.md)                               | Batch fetching, polling/reload, `ForceReloadAsync`, and custom AWS client construction.                                              |
+| [Authentication & Security](authentication-and-security.md) | Credential resolution, region resolution, required IAM permissions, and secret-exposure guidance.                                    |
+| [Platform Support](platform-support.md)                     | Target framework compatibility and using the provider against LocalStack for local development.                                      |
+| [Troubleshooting & FAQ](troubleshooting.md)                 | Diagnosing common failures and answers to recurring questions.                                                                       |
+| [API Reference](api-reference.md)                           | Full signatures for every public type and member.                                                                                    |
+| [AI Coding Agent Skill](agent-skill.md)                     | An installable Agent Skill that teaches AI coding assistants to use this package correctly.                                          |
 
 ## Installation
 

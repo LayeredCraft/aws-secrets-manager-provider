@@ -4,7 +4,7 @@ description: Helps correctly integrate and configure the AWSSSM.Provider NuGet p
 license: MIT
 metadata:
   author: LayeredCraft
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # AWSSSM.Provider
@@ -17,7 +17,7 @@ metadata:
 dotnet add package AWSSSM.Provider
 ```
 
-Supported: `netstandard2.0` (→ .NET Framework 4.6.2+), `net8.0`, `net9.0`, `net10.0`, `net11.0`.
+Supported: `netstandard2.0` (→ .NET Framework 4.6.2+), `net8.0`, `net9.0`, `net10.0`, `net11.0`. Native AOT is officially supported when an app targets `net8.0` or later. JSON parameter flattening uses `System.Text.Json` DOM APIs and needs no source-generated serializer context.
 
 ## Core usage patterns
 
