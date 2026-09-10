@@ -1,0 +1,29 @@
+{
+  "skill_name": "dotnet-aot-library-validation",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We're about to ship MyLib.Core as a NuGet package and want to advertise it as AOT compatible. When I set IsAotCompatible the build lights up with a bunch of IL2xxx and IL3xxx warnings (IL2070, IL2067, IL3050, and friends). Please make the library AOT compatible and set up something so regressions get caught in CI on every PR. The library lives in evals/fixtures/mylib/src/MyLib.Core (project fixture for this task; treat it as the repo).",
+      "expected_output": "Library csproj updated with conditional IsAotCompatible for net8.0+, offending reflection patterns fixed or annotated (PluginLoader annotation flow, GenericCache MakeGenericType restriction, Enum.GetValues<TEnum>, JSON source-gen context replacing reflection serialization, DllImport converted to LibraryImport), AOT test app scaffolded with PublishAot + TrimmerRootAssembly, publish-check script and CI workflow added, build compiles without new warnings.",
+      "files": [
+        "evals/fixtures/mylib/src/MyLib.Core/MyLib.Core.csproj",
+        "evals/fixtures/mylib/src/MyLib.Core/PluginLoader.cs",
+        "evals/fixtures/mylib/src/MyLib.Core/GenericCache.cs",
+        "evals/fixtures/mylib/src/MyLib.Core/Payload.cs",
+        "evals/fixtures/mylib/src/MyLib.Core/Native.cs"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "dotnet build on my library fails the AOT analysis with 'warning IL3050: Using member 'System.Type.MakeGenericType(Type[])' which has 'RequiresDynamicCodeAttribute' can break functionality when AOT compiling' in GenericCache.RegisterSlot. Explain why this breaks under Native AOT and fix it in the fixture at evals/fixtures/mylib/src/MyLib.Core/GenericCache.cs.",
+      "expected_output": "Explanation: AOT pre-generates native code per generic instantiation; unknown instantiations (especially value-type args) don't exist at runtime. Fix restricts MakeGenericType to statically known types (hardcoded instantiation map or overloads) instead of suppressing.",
+      "files": ["evals/fixtures/mylib/src/MyLib.Core/GenericCache.cs"]
+    },
+    {
+      "id": 3,
+      "prompt": "My team maintains a .NET library that other companies consume from ASP.NET Core apps they publish with PublishAot. The library uses Newtonsoft.Json for payload parsing, DllImport for two native calls, and scans types with reflection at startup. What's the plan to make it AOT compatible? We target netstandard2.0 and net8.0. Don't change any code yet — I want the plan and gotchas first.",
+      "expected_output": "Structured plan: enable IsAotCompatible analyzers, replace Newtonsoft with System.Text.Json source generation, convert DllImport to LibraryImport, annotate/propagate reflection usage, bottom-up dependency-first ordering, netstandard2.0 legacy-TFM attribute strategy (internal attribute defs or PolySharp), AOT test app + CI validation, warning-catalog reading for IL2xxx/IL3xxx.",
+      "files": []
+    }
+  ]
+}

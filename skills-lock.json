@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "dotnet-aot-library-validation": {
+      "source": "LayeredCraft/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dotnet-aot-library-validation/SKILL.md",
+      "computedHash": "b34a116d27d73b2675ec2e5dd2b1070e000453c402246409ae224961a58f8a8b"
+    }
+  }
+}

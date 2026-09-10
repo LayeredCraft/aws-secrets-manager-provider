@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/AWSSecretsManager.Provider/AWSSecretsManager.Provider.csproj" />
+    <ProjectReference Include="../../src/AWSSSM.Provider/AWSSSM.Provider.csproj" />
+    <TrimmerRootAssembly Include="AWSSecretsManager.Provider" />
+    <TrimmerRootAssembly Include="AWSSSM.Provider" />
+  </ItemGroup>
+
+</Project>
