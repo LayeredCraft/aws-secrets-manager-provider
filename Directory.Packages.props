@@ -3,9 +3,9 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="AWS SDK">
-    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.3" />
-    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.11" />
-    <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.103.7" />
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.102.4" />
+    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.13" />
+    <PackageVersion Include="AWSSDK.SimpleSystemsManagement" Version="4.0.103.8" />
   </ItemGroup>
   <ItemGroup Label="LayeredCraft">
     <PackageVersion Include="LayeredCraft.StructuredLogging" Version="1.2.4" />
@@ -48,7 +48,7 @@
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="Compono.TestDoubles" Version="0.9.0" />
     <PackageVersion Include="Compono.XunitV3" Version="0.9.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.11.0" />
     <PackageVersion Include="Testcontainers.Floci" Version="4.15.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
